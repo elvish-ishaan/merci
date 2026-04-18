@@ -1,159 +1,331 @@
-# Turborepo starter
+# Mercy - Static Site Deployment Platform
 
-This Turborepo starter is maintained by the Turborepo core team.
+Mercy is a modern deployment platform that simplifies deploying static sites directly from Git repositories. Connect your GitHub repo, and Mercy handles cloning, building, and hosting—all in one seamless workflow.
 
-## Using this example
+## Overview
 
-Run the following command:
+Mercy enables developers to deploy web applications with minimal configuration. Simply provide a repository URL, and the platform automatically:
+- Clones your repository
+- Builds your project
+- Uploads assets to distributed storage
+- Serves your application instantly
 
-```sh
-npx create-turbo@latest
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Frontend (Next.js)                          │
+│  • User Registration & Login                                    │
+│  • Dashboard & Project Management                               │
+│  • Deployment Status Tracking                                   │
+│  • Settings Management                                          │
+└────────────────┬────────────────────────────────────────────────┘
+                 │ HTTP/REST
+┌────────────────▼────────────────────────────────────────────────┐
+│                  API Server (Express.js)                        │
+│  • Authentication (JWT)                                         │
+│  • Project Management                                           │
+│  • Deployment Orchestration                                     │
+│  • Static File Serving                                          │
+└────────────────┬────────────┬──────────────────────────────────┘
+                 │            │
+    ┌────────────▼─────┐      └──────────────────────┐
+    │   PostgreSQL DB  │                             │
+    │  • Users         │                             │
+    │  • Projects      │                             │
+    │  • Status Info   │                             │
+    └──────────────────┘                             │
+                                                     │ Queue Tasks
+                                                     │
+                                    ┌────────────────▼──────┐
+                                    │   Redis (BullMQ)      │
+                                    │  • Job Queue          │
+                                    │  • Deployment Tasks   │
+                                    └────────────────┬──────┘
+                                                     │
+                                    ┌────────────────▼──────┐
+                                    │ Worker Service        │
+                                    │  • Clone Repos        │
+                                    │  • Build Projects     │
+                                    │  • Upload Builds      │
+                                    └────────────────┬──────┘
+                                                     │
+                                    ┌────────────────▼──────┐
+                                    │ Cloudflare R2         │
+                                    │  • Static Assets      │
+                                    │  • Built Applications │
+                                    └───────────────────────┘
 ```
 
-## What's inside?
+## Tech Stack
 
-This Turborepo includes the following packages/apps:
+### Frontend
+- **Next.js 16** - React framework for production-grade applications
+- **React 19** - UI library
+- **TypeScript** - Type-safe development
+- **Tailwind CSS** - Utility-first CSS framework
+- **shadcn/ui** - Component library built on Radix UI
+- **Lucide React** - Icon library
 
-### Apps and Packages
+### Backend
+- **Express.js** - Minimal and flexible web framework
+- **Bun** - Fast JavaScript runtime and package manager
+- **TypeScript** - Type-safe development
+- **Prisma** - ORM for database management
+- **JWT (jose)** - Authentication tokens
+- **bcryptjs** - Password hashing
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+### Infrastructure
+- **PostgreSQL** - Relational database
+- **Redis + BullMQ** - Job queue for deployments
+- **Cloudflare R2** - S3-compatible object storage
+- **Docker Compose** - Local development containers
+- **Turbo** - Monorepo management
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+## Project Structure
 
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
+```
+mercy/
+├── apps/
+│   ├── web/              # Next.js frontend application
+│   │   ├── app/          # App directory (pages & layouts)
+│   │   │   ├── login/
+│   │   │   ├── register/
+│   │   │   └── dashboard/
+│   │   └── components/   # Reusable React components
+│   │
+│   ├── api/              # Express backend server
+│   │   ├── src/
+│   │   │   ├── routes/   # API endpoints
+│   │   │   │   ├── auth.ts
+│   │   │   │   ├── deploy.ts
+│   │   │   │   └── app.ts
+│   │   │   ├── middleware/
+│   │   │   └── lib/
+│   │   └── index.ts
+│   │
+│   └── worker/           # BullMQ worker for deployments
+│       └── index.ts
+│
+├── packages/
+│   ├── db/               # Shared database setup (Prisma)
+│   │   └── prisma/
+│   │       └── schema.prisma
+│   ├── ui/               # Shared UI components
+│   ├── eslint-config/    # Shared ESLint configuration
+│   └── typescript-config/# Shared TypeScript configuration
+│
+├── turbo.json            # Monorepo configuration
+└── package.json          # Root package configuration
 ```
 
-Without global `turbo`, use your package manager:
+## Getting Started
 
-```sh
-cd my-turborepo
-npx turbo build
-bun dlx turbo build
-bun exec turbo build
+### Prerequisites
+
+- **Node.js** ≥ 18
+- **Bun** 1.3.10 or later
+- **Docker & Docker Compose** (for local PostgreSQL and Redis)
+- **Git**
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd mercy
+   ```
+
+2. **Install dependencies**
+   ```bash
+   bun install
+   ```
+
+3. **Set up environment variables**
+   
+   Copy the environment template to each app:
+   ```bash
+   cp apps/api/.env.example apps/api/.env
+   ```
+   
+   Edit `apps/api/.env` with your configuration:
+   ```env
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mercy"
+   JWT_SECRET="your-secure-random-secret-key"
+   
+   R2_ENDPOINT="https://your-account.r2.cloudflarestorage.com"
+   R2_ACCESS_KEY_ID="your-access-key"
+   R2_SECRET_ACCESS_KEY="your-secret-key"
+   R2_BUCKET_NAME="your-bucket-name"
+   
+   REDIS_HOST="localhost"
+   REDIS_PORT="6379"
+   ```
+
+4. **Start local services**
+   ```bash
+   docker-compose -f apps/api/docker-compose.yml up -d
+   ```
+   
+   This starts PostgreSQL and Redis containers.
+
+5. **Run database migrations**
+   ```bash
+   cd packages/db
+   bun run db:push
+   cd ../..
+   ```
+
+### Running the Application
+
+Start all services in development mode:
+
+```bash
+bun run dev
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+This command runs all development servers in parallel using Turbo:
+- **Frontend**: http://localhost:3000 (Next.js)
+- **API**: http://localhost:3001 (Express)
+- **Worker**: Runs in background processing deployment jobs
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+### Running Individual Services
 
-```sh
-turbo build --filter=docs
+**Frontend only:**
+```bash
+cd apps/web && bun run dev
 ```
 
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-bun exec turbo build --filter=docs
-bun exec turbo build --filter=docs
+**API only:**
+```bash
+cd apps/api && bun run dev
 ```
 
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
+**Worker only:**
+```bash
+cd apps/worker && bun run dev
 ```
 
-Without global `turbo`, use your package manager:
+### Building for Production
 
-```sh
-cd my-turborepo
-npx turbo dev
-bun exec turbo dev
-bun exec turbo dev
+```bash
+bun run build
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+This compiles all packages and applications with optimizations.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+### Type Checking
 
-```sh
-turbo dev --filter=web
+```bash
+bun run check-types
 ```
 
-Without global `turbo`:
+### Linting
 
-```sh
-npx turbo dev --filter=web
-bun exec turbo dev --filter=web
-bun exec turbo dev --filter=web
+```bash
+bun run lint
 ```
 
-### Remote Caching
+### Code Formatting
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
+```bash
+bun run format
 ```
 
-Without global `turbo`, use your package manager:
+## Contributing
 
-```sh
-cd my-turborepo
-npx turbo login
-bun exec turbo login
-bun exec turbo login
+### Setting Up for Development
+
+1. Create a new branch for your feature:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. Make your changes following the code standards below.
+
+3. Run tests and checks(comming sooon):
+   ```bash
+   bun run lint
+   bun run check-types
+   bun run build
+   ```
+
+4. Commit your changes:
+   ```bash
+   git commit -m "feat: describe your changes"
+   ```
+
+5. Push and create a pull request:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+### Commit Message Convention
+
+```
+feat: add new feature
+fix: resolve issue
+refactor: improve code structure
+docs: update documentation
+style: formatting changes
+test: add or update tests
+chore: maintenance tasks
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+### Pull Request Guidelines
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+- Keep PRs focused on a single feature or fix
+- Write descriptive PR titles and descriptions
+- Reference related issues with `Closes #issue-number`
+- Ensure all checks pass before requesting review
+- Request review from maintainers
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+## Deployment
 
-```sh
-turbo link
-```
+### Production Deployment
 
-Without global `turbo`:
+1. Set production environment variables in your hosting platform
+2. Build the application:
+   ```bash
+   bun run build
+   ```
+3. Deploy using your preferred platform
 
-```sh
-npx turbo link
-bun exec turbo link
-bun exec turbo link
-```
+### Environment Variables Required
 
-## Useful Links
+- `DATABASE_URL` - PostgreSQL connection string
+- `JWT_SECRET` - Secure random secret for JWT signing
+- `R2_ENDPOINT` - Cloudflare R2 endpoint
+- `R2_ACCESS_KEY_ID` - R2 access key
+- `R2_SECRET_ACCESS_KEY` - R2 secret key
+- `R2_BUCKET_NAME` - R2 bucket name
+- `REDIS_HOST` - Redis host
+- `REDIS_PORT` - Redis port
+- `PORT` - API server port (default: 3001)
 
-Learn more about the power of Turborepo:
+## Troubleshooting
 
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+### Connection Issues
+- Ensure Docker containers are running: `docker-compose -f apps/api/docker-compose.yml ps`
+- Check that PostgreSQL is accessible: `psql $DATABASE_URL -c "SELECT 1"`
+- Verify Redis connection: `redis-cli ping`
+
+### Build Failures
+- Clear node_modules and reinstall: `rm -rf node_modules && bun install`
+- Reset database: `cd packages/db && bun run db:reset`
+
+### Port Conflicts
+- Frontend: Change with `next dev --port <PORT>`
+- API: Set `PORT` environment variable
+
+## License
+
+This project is licensed under the MIT License. See LICENSE file for details.
+
+## Support
+
+For issues, feature requests, or questions:
+- Open an issue on GitHub
+- Check existing documentation
+
+---
