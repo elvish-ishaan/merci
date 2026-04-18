@@ -49,4 +49,24 @@ export const api = {
       '/deploy',
       { method: 'POST', body: JSON.stringify({ repoUrl, projectName, envVars }) },
     ),
+
+  getGithubStatus: () =>
+    request<{ connected: boolean }>('/github/status'),
+
+  getGithubRepos: () =>
+    request<{
+      repos: {
+        id: number
+        fullName: string
+        private: boolean
+        description: string | null
+        cloneUrl: string
+        updatedAt: string
+      }[]
+    }>('/github/repos'),
+
+  connectGithub: () => {
+    const t = token()
+    if (t) window.location.href = `${BASE}/auth/github?token=${encodeURIComponent(t)}`
+  },
 }

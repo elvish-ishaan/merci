@@ -8,11 +8,13 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  password  String
-  createdAt DateTime  @default(now())
-  projects  Project[]
+  id                String    @id @default(uuid())
+  email             String    @unique
+  password          String
+  createdAt         DateTime  @default(now())
+  projects          Project[]
+  githubId          String?   @unique
+  githubAccessToken String?
 }
 
 model Project {

@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { Queue } from 'bullmq'
 import prisma from '../lib/prisma'
 import { authMiddleware } from '../middleware/auth'
-import { encryptValue } from '@repo/crypto'
+import { encryptValue, decryptValue } from '@repo/crypto'
 
 const deploy = Router()
 
@@ -83,7 +83,11 @@ deploy.post('/', authMiddleware, async (req, res) => {
     encryptedValue: encryptValue(v.value),
   }))
 
-  await deployQueue.add('deploy', { projectId: project.id, repoUrl, encryptedEnvVars })
+  // Decrypt and pass the GitHub token so the worker can clone private repos
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { githubAccessToken: true } })
+  const githubToken = user?.githubAccessToken ? decryptValue(user.githubAccessToken) : undefined
+
+  await deployQueue.add('deploy', { projectId: project.id, repoUrl, encryptedEnvVars, githubToken })
 
   res.json({
     projectId: project.id,

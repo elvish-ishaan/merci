@@ -13,16 +13,17 @@ interface DeployJobData {
   projectId: string
   repoUrl: string
   encryptedEnvVars?: { key: string; encryptedValue: string }[]
+  githubToken?: string
 }
 
 async function processJob(job: Job<DeployJobData>): Promise<void> {
-  const { projectId, repoUrl, encryptedEnvVars = [] } = job.data
+  const { projectId, repoUrl, encryptedEnvVars = [], githubToken } = job.data
   const tempDir = path.join(os.tmpdir(), `mercy-${projectId}`)
 
   try {
     await prisma.project.update({ where: { id: projectId }, data: { status: 'CLONING' } })
     console.log(`[${projectId}] Cloning ${repoUrl}`)
-    await cloneRepo(repoUrl, tempDir)
+    await cloneRepo(repoUrl, tempDir, githubToken)
 
     assertViteProject(tempDir)
 

@@ -15,6 +15,15 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 
+type GithubRepo = {
+  id: number
+  fullName: string
+  private: boolean
+  description: string | null
+  cloneUrl: string
+  updatedAt: string
+}
+
 type Project = {
   id: string
   projectName: string
@@ -37,6 +46,99 @@ const STATUS_VARIANT: Record<string, string> = {
 
 const INITIAL_ENV_ROWS: EnvRow[] = [{ key: '', value: '' }]
 
+function GithubImportTab({
+  onSelect,
+}: {
+  onSelect: (repoUrl: string, projectName: string) => void
+}) {
+  const [connected, setConnected] = useState<boolean | null>(null)
+  const [repos, setRepos] = useState<GithubRepo[]>([])
+  const [loadingRepos, setLoadingRepos] = useState(false)
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    api.getGithubStatus()
+      .then(({ connected }) => {
+        setConnected(connected)
+        if (connected) {
+          setLoadingRepos(true)
+          api.getGithubRepos()
+            .then(({ repos }) => setRepos(repos))
+            .catch(() => {})
+            .finally(() => setLoadingRepos(false))
+        }
+      })
+      .catch(() => setConnected(false))
+  }, [])
+
+  const filtered = repos.filter((r) =>
+    r.fullName.toLowerCase().includes(search.toLowerCase()),
+  )
+
+  if (connected === null) {
+    return <p className="text-neutral-500 text-sm py-4 text-center">Checking GitHub connection…</p>
+  }
+
+  if (!connected) {
+    return (
+      <div className="py-6 flex flex-col items-center gap-3">
+        <p className="text-neutral-400 text-sm text-center">
+          Connect your GitHub account to browse and import your repositories.
+        </p>
+        <Button onClick={() => api.connectGithub()} className="gap-2">
+          <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" aria-hidden="true">
+            <path d="M12 0C5.37 0 0 5.373 0 12c0 5.303 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577v-2.165c-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.757-1.333-1.757-1.089-.745.083-.73.083-.73 1.205.084 1.84 1.237 1.84 1.237 1.07 1.835 2.807 1.305 3.492.998.108-.775.418-1.305.762-1.605-2.665-.3-5.467-1.334-5.467-5.931 0-1.31.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.3 1.23A11.51 11.51 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.29-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.91 1.235 3.221 0 4.61-2.807 5.628-5.479 5.923.43.372.823 1.102.823 2.222v3.293c0 .322.218.694.825.576C20.565 21.796 24 17.3 24 12c0-6.627-5.373-12-12-12z" />
+          </svg>
+          Connect GitHub
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <Input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search repositories…"
+        className="bg-neutral-900 border-neutral-800 focus:border-neutral-600 placeholder:text-neutral-600"
+      />
+      {loadingRepos ? (
+        <p className="text-neutral-500 text-sm text-center py-4">Loading repositories…</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-neutral-500 text-sm text-center py-4">No repositories found.</p>
+      ) : (
+        <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
+          {filtered.map((repo) => (
+            <button
+              key={repo.id}
+              type="button"
+              onClick={() => onSelect(`https://github.com/${repo.fullName}`, repo.fullName.split('/')[1] ?? repo.fullName)}
+              className="w-full text-left px-3 py-2.5 rounded-lg border border-neutral-800 hover:border-neutral-600 hover:bg-neutral-900/60 transition-colors group"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium text-neutral-200 group-hover:text-white truncate">
+                  {repo.fullName}
+                </span>
+                <Badge
+                  variant="outline"
+                  className={`text-xs shrink-0 ${repo.private ? 'border-neutral-700 text-neutral-500' : 'border-neutral-700 text-neutral-500'}`}
+                >
+                  {repo.private ? 'Private' : 'Public'}
+                </Badge>
+              </div>
+              {repo.description && (
+                <p className="text-xs text-neutral-500 mt-0.5 truncate">{repo.description}</p>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function DeployDialog({
   open,
   onClose,
@@ -47,6 +149,7 @@ function DeployDialog({
   onDeployed: () => void
 }) {
   const [step, setStep] = useState<1 | 2>(1)
+  const [importTab, setImportTab] = useState<'paste' | 'github'>('paste')
   const [repoUrl, setRepoUrl] = useState('')
   const [projectName, setProjectName] = useState('')
   const [envRows, setEnvRows] = useState<EnvRow[]>(INITIAL_ENV_ROWS)
@@ -56,6 +159,7 @@ function DeployDialog({
 
   function reset() {
     setStep(1)
+    setImportTab('paste')
     setRepoUrl('')
     setProjectName('')
     setEnvRows(INITIAL_ENV_ROWS)
@@ -74,6 +178,12 @@ function DeployDialog({
   function handleNext(e: FormEvent) {
     e.preventDefault()
     setDeployError('')
+    setStep(2)
+  }
+
+  function handleGithubSelect(url: string, name: string) {
+    setRepoUrl(url)
+    setProjectName(name)
     setStep(2)
   }
 
@@ -117,7 +227,7 @@ function DeployDialog({
           </div>
           <DialogDescription className="text-neutral-400">
             {step === 1
-              ? 'Paste a public GitHub repo URL to clone and deploy.'
+              ? 'Import a Vite-React project from GitHub to deploy.'
               : 'Add environment variables for your build (optional).'}
           </DialogDescription>
         </DialogHeader>
@@ -134,40 +244,79 @@ function DeployDialog({
             </Button>
           </div>
         ) : step === 1 ? (
-          <form onSubmit={handleNext} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="repo-url">GitHub repo URL</Label>
-              <Input
-                id="repo-url"
-                type="url"
-                value={repoUrl}
-                onChange={(e) => setRepoUrl(e.target.value)}
-                required
-                placeholder="https://github.com/user/repo"
-                className="bg-neutral-900 border-neutral-800 focus:border-neutral-600 placeholder:text-neutral-600"
-              />
+          <div className="space-y-4">
+            {/* Tab switcher */}
+            <div className="flex rounded-lg border border-neutral-800 p-1 gap-1">
+              <button
+                type="button"
+                onClick={() => setImportTab('paste')}
+                className={`flex-1 text-xs py-1.5 rounded-md transition-colors ${
+                  importTab === 'paste'
+                    ? 'bg-neutral-800 text-white'
+                    : 'text-neutral-500 hover:text-neutral-300'
+                }`}
+              >
+                Paste URL
+              </button>
+              <button
+                type="button"
+                onClick={() => setImportTab('github')}
+                className={`flex-1 text-xs py-1.5 rounded-md transition-colors ${
+                  importTab === 'github'
+                    ? 'bg-neutral-800 text-white'
+                    : 'text-neutral-500 hover:text-neutral-300'
+                }`}
+              >
+                Import from GitHub
+              </button>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="project-name">
-                Project name{' '}
-                <span className="text-neutral-500 font-normal">(optional)</span>
-              </Label>
-              <Input
-                id="project-name"
-                type="text"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                placeholder="my-app"
-                className="bg-neutral-900 border-neutral-800 focus:border-neutral-600 placeholder:text-neutral-600"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit">Next</Button>
-            </div>
-          </form>
+
+            {importTab === 'paste' ? (
+              <form onSubmit={handleNext} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="repo-url">GitHub repo URL</Label>
+                  <Input
+                    id="repo-url"
+                    type="url"
+                    value={repoUrl}
+                    onChange={(e) => setRepoUrl(e.target.value)}
+                    required
+                    placeholder="https://github.com/user/repo"
+                    className="bg-neutral-900 border-neutral-800 focus:border-neutral-600 placeholder:text-neutral-600"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="project-name">
+                    Project name{' '}
+                    <span className="text-neutral-500 font-normal">(optional)</span>
+                  </Label>
+                  <Input
+                    id="project-name"
+                    type="text"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    placeholder="my-app"
+                    className="bg-neutral-900 border-neutral-800 focus:border-neutral-600 placeholder:text-neutral-600"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="ghost" onClick={onClose}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">Next</Button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-3">
+                <GithubImportTab onSelect={handleGithubSelect} />
+                <div className="flex justify-end">
+                  <Button type="button" variant="ghost" onClick={onClose}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
           <form onSubmit={handleDeploy} className="space-y-4">
             <div className="space-y-2">
@@ -251,6 +400,7 @@ function DashboardContent() {
   const searchParams = useSearchParams()
   const [projects, setProjects] = useState<Project[]>([])
   const [loadingProjects, setLoadingProjects] = useState(true)
+  const [githubNotice, setGithubNotice] = useState<'connected' | 'error' | null>(null)
 
   const deployOpen = searchParams.get('deploy') === 'true'
 
@@ -269,12 +419,35 @@ function DashboardContent() {
     fetchProjects()
   }, [fetchProjects])
 
+  useEffect(() => {
+    const github = searchParams.get('github')
+    if (github === 'connected' || github === 'error') {
+      setGithubNotice(github)
+      router.replace('/dashboard')
+      const t = setTimeout(() => setGithubNotice(null), 4000)
+      return () => clearTimeout(t)
+    }
+  }, [searchParams, router])
+
   function closeDialog() {
     router.replace('/dashboard')
   }
 
   return (
     <div className="p-8">
+      {githubNotice && (
+        <div
+          className={`mb-4 px-4 py-3 rounded-lg border text-sm ${
+            githubNotice === 'connected'
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+              : 'bg-red-500/10 border-red-500/20 text-red-400'
+          }`}
+        >
+          {githubNotice === 'connected'
+            ? 'GitHub connected successfully.'
+            : 'Failed to connect GitHub. Please try again.'}
+        </div>
+      )}
       <h1 className="text-xl font-semibold mb-6">Projects</h1>
 
       {loadingProjects ? (
