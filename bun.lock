@@ -20,6 +20,7 @@
         "bullmq": "^5",
         "cors": "^2.8.5",
         "express": "^4.21.0",
+        "ioredis": "^5",
         "jose": "^5.10.0",
         "simple-git": "^3.27.0",
       },
@@ -74,6 +75,20 @@
       "devDependencies": {
         "@types/bun": "latest",
         "@types/fs-extra": "^11",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+    "apps/ws": {
+      "name": "@repo/ws",
+      "dependencies": {
+        "@repo/db": "*",
+        "ioredis": "^5",
+        "jose": "^5.10.0",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
       },
       "peerDependencies": {
         "typescript": "^5",
@@ -571,6 +586,8 @@
     "@repo/eslint-config": ["@repo/eslint-config@workspace:packages/eslint-config"],
 
     "@repo/typescript-config": ["@repo/typescript-config@workspace:packages/typescript-config"],
+
+    "@repo/ws": ["@repo/ws@workspace:apps/ws"],
 
     "@sec-ant/readable-stream": ["@sec-ant/readable-stream@0.4.1", "", {}, "sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg=="],
 

@@ -16,12 +16,46 @@ interface DeployJobData {
   githubToken?: string
 }
 
+const API_BASE = process.env['API_BASE_URL'] ?? 'http://localhost:3001'
+const WORKER_SECRET = process.env['WORKER_SECRET'] ?? ''
+
+async function postLog(projectId: string, line: string, stream: 'stdout' | 'stderr') {
+  try {
+    await fetch(`${API_BASE}/internal/logs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${WORKER_SECRET}`,
+      },
+      body: JSON.stringify({ projectId, line, stream }),
+    })
+  } catch {
+    // non-fatal: log line is dropped if API is unreachable
+  }
+}
+
+async function postStatus(projectId: string, status: string) {
+  try {
+    await fetch(`${API_BASE}/internal/status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${WORKER_SECRET}`,
+      },
+      body: JSON.stringify({ projectId, status }),
+    })
+  } catch {
+    // non-fatal
+  }
+}
+
 async function processJob(job: Job<DeployJobData>): Promise<void> {
   const { projectId, repoUrl, encryptedEnvVars = [], githubToken } = job.data
   const tempDir = path.join(os.tmpdir(), `mercy-${projectId}`)
 
   try {
     await prisma.project.update({ where: { id: projectId }, data: { status: 'CLONING' } })
+    await postStatus(projectId, 'CLONING')
     console.log(`[${projectId}] Cloning ${repoUrl}`)
     await cloneRepo(repoUrl, tempDir, githubToken)
 
@@ -33,8 +67,11 @@ async function processJob(job: Job<DeployJobData>): Promise<void> {
     }))
 
     await prisma.project.update({ where: { id: projectId }, data: { status: 'BUILDING' } })
+    await postStatus(projectId, 'BUILDING')
     console.log(`[${projectId}] Building in Docker`)
-    await buildInDocker(tempDir, envVars)
+    await buildInDocker(tempDir, envVars, (line, stream) => {
+      postLog(projectId, line, stream)
+    })
 
     const buildDir = detectBuildDir(tempDir)
     const prefix = `builds/${projectId}`
@@ -46,10 +83,12 @@ async function processJob(job: Job<DeployJobData>): Promise<void> {
       where: { id: projectId },
       data: { status: 'DEPLOYED', bucketPrefix: prefix, deployedUrl },
     })
+    await postStatus(projectId, 'DEPLOYED')
     console.log(`[${projectId}] Deployed successfully`)
   } catch (err) {
     console.error(`[${projectId}] Failed:`, err)
     await prisma.project.update({ where: { id: projectId }, data: { status: 'FAILED' } })
+    await postStatus(projectId, 'FAILED')
     throw err
   } finally {
     await fs.remove(tempDir).catch(() => {})

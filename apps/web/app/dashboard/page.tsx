@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, type FormEvent, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { api } from '../../lib/api'
+import { BuildLogsPanel } from '@/components/build-logs-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -401,6 +402,7 @@ function DashboardContent() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [githubNotice, setGithubNotice] = useState<'connected' | 'error' | null>(null)
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
 
   const deployOpen = searchParams.get('deploy') === 'true'
 
@@ -481,7 +483,8 @@ function DashboardContent() {
               {projects.map((p, i) => (
                 <tr
                   key={p.id}
-                  className={`${i !== projects.length - 1 ? 'border-b border-neutral-800/60' : ''} hover:bg-neutral-900/40 transition-colors`}
+                  onClick={() => setSelectedProject(p)}
+                  className={`${i !== projects.length - 1 ? 'border-b border-neutral-800/60' : ''} hover:bg-neutral-900/40 transition-colors cursor-pointer`}
                 >
                   <td className="px-4 py-3 font-medium">{p.projectName}</td>
                   <td className="px-4 py-3">
@@ -538,6 +541,19 @@ function DashboardContent() {
           fetchProjects()
         }}
       />
+
+      {selectedProject && (
+        <BuildLogsPanel
+          projectId={selectedProject.id}
+          projectName={selectedProject.projectName}
+          onClose={() => setSelectedProject(null)}
+          onStatusChange={(status) =>
+            setProjects((prev) =>
+              prev.map((p) => (p.id === selectedProject.id ? { ...p, status } : p)),
+            )
+          }
+        />
+      )}
     </div>
   )
 }

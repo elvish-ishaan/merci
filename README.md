@@ -6,117 +6,141 @@ Mercy is a modern deployment platform that simplifies deploying static sites dir
 
 Mercy enables developers to deploy web applications with minimal configuration. Simply provide a repository URL, and the platform automatically:
 - Clones your repository
-- Builds your project
+- Builds your project in Docker
+- Streams real-time build logs to the browser
 - Uploads assets to distributed storage
 - Serves your application instantly
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Frontend (Next.js)                          │
-│  • User Registration & Login                                    │
-│  • Dashboard & Project Management                               │
-│  • Deployment Status Tracking                                   │
-│  • Settings Management                                          │
-└────────────────┬────────────────────────────────────────────────┘
-                 │ HTTP/REST
-┌────────────────▼────────────────────────────────────────────────┐
-│                  API Server (Express.js)                        │
-│  • Authentication (JWT)                                         │
-│  • Project Management                                           │
-│  • Deployment Orchestration                                     │
-│  • Static File Serving                                          │
-└────────────────┬────────────┬──────────────────────────────────┘
-                 │            │
-    ┌────────────▼─────┐      └──────────────────────┐
-    │   PostgreSQL DB  │                             │
-    │  • Users         │                             │
-    │  • Projects      │                             │
-    │  • Status Info   │                             │
-    └──────────────────┘                             │
-                                                     │ Queue Tasks
-                                                     │
-                                    ┌────────────────▼──────┐
-                                    │   Redis (BullMQ)      │
-                                    │  • Job Queue          │
-                                    │  • Deployment Tasks   │
-                                    └────────────────┬──────┘
-                                                     │
-                                    ┌────────────────▼──────┐
-                                    │ Worker Service        │
-                                    │  • Clone Repos        │
-                                    │  • Build Projects     │
-                                    │  • Upload Builds      │
-                                    └────────────────┬──────┘
-                                                     │
-                                    ┌────────────────▼──────┐
-                                    │ Cloudflare R2         │
-                                    │  • Static Assets      │
-                                    │  • Built Applications │
-                                    └───────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                     Frontend (Next.js)                                 │
+│  • User Registration & Login                                           │
+│  • Dashboard & Project Management                                      │
+│  • Real-time Build Logs via WebSocket                                  │
+│  • Live Status Updates                                                 │
+│  • GitHub Integration                                                  │
+└────────────────┬────────────────────────────┬──────────────────────────┘
+                 │ HTTP/REST                  │ WebSocket
+                 │                            │
+        ┌────────▼─────────┐        ┌────────▼──────────┐
+        │  API Server      │        │  WS Service       │
+        │  (Express.js)    │        │  (Bun native)     │
+        │  • Auth          │        │  • JWT Auth       │
+        │  • Projects      │        │  • DB Replay      │
+        │  • Deployments   │        │  • Redis Sub      │
+        │  • File Serving  │        │  • Live Forward   │
+        └────────┬─────────┘        └────────┬──────────┘
+                 │                           │
+          ┌──────┼──────────────┬────────────┤
+          │      │              │            │
+          │      │         ┌────▼────┐       │
+          │      │         │  Redis  │       │
+          │      │         │  • Queue│       │
+    ┌─────▼──────▼───┐     │  • Pub  │   ┌───▼──────────┐
+    │  PostgreSQL    │     │   Sub   │   │ Worker       │
+    │  • Users       │     └────▲────┘   │ (Node.js)    │
+    │  • Projects    │          │        │ • Clone      │
+    │  • BuildLogs   │          │        │ • Build      │
+    │  • EnvVars     │          │        │ • Stream     │
+    └────────────────┘          │        │ • Upload     │
+                                │        └───┬──────────┘
+                         ┌──────┴────────────┘
+                         │ HTTP Posts
+                         │ (logs & status)
+                         │
+                    ┌────▼──────────┐
+                    │ Cloudflare R2 │
+                    │ • Static Files│
+                    │ • Built Apps  │
+                    └───────────────┘
 ```
+
+## Data Flow: Real-Time Build Logs
+
+1. **Worker captures output**: Docker build stdout/stderr piped and line-buffered
+2. **Worker posts logs**: `POST /internal/logs` to API (fire-and-forget)
+3. **API persists & broadcasts**: Writes to `BuildLog` table, publishes to Redis channel `build:{projectId}`
+4. **WS Service fan-out**: Redis subscriber forwards to all connected browsers for that project
+5. **Browser receives**: WebSocket receives live log lines; client deduplicates by ID during replay phase
+6. **Status updates**: Status changes also published via same Redis channel and forwarded to UI
 
 ## Tech Stack
 
 ### Frontend
-- **Next.js 16** - React framework for production-grade applications
+- **Next.js 16** - React framework
 - **React 19** - UI library
 - **TypeScript** - Type-safe development
-- **Tailwind CSS** - Utility-first CSS framework
-- **shadcn/ui** - Component library built on Radix UI
-- **Lucide React** - Icon library
+- **Tailwind CSS** - Utility-first CSS
+- **shadcn/ui** - Component library
 
-### Backend
-- **Express.js** - Minimal and flexible web framework
-- **Bun** - Fast JavaScript runtime and package manager
+### Backend & Services
+- **Express.js** - REST API
+- **Bun** - JavaScript runtime (API, WS service, worker)
 - **TypeScript** - Type-safe development
-- **Prisma** - ORM for database management
-- **JWT (jose)** - Authentication tokens
+- **Prisma** - ORM for database
+- **JWT (jose)** - Authentication
 - **bcryptjs** - Password hashing
+- **ioredis** - Redis client for pub/sub
 
 ### Infrastructure
 - **PostgreSQL** - Relational database
 - **Redis + BullMQ** - Job queue for deployments
+- **Redis Pub/Sub** - Real-time message broadcast
 - **Cloudflare R2** - S3-compatible object storage
-- **Docker Compose** - Local development containers
-- **Turbo** - Monorepo management
+- **Docker** - Build environment isolation
+- **Turbo** - Monorepo orchestration
 
 ## Project Structure
 
 ```
 mercy/
 ├── apps/
-│   ├── web/              # Next.js frontend application
-│   │   ├── app/          # App directory (pages & layouts)
+│   ├── web/              # Next.js frontend (port 3000)
+│   │   ├── app/
 │   │   │   ├── login/
 │   │   │   ├── register/
 │   │   │   └── dashboard/
-│   │   └── components/   # Reusable React components
+│   │   └── components/
+│   │       └── build-logs-panel.tsx
 │   │
-│   ├── api/              # Express backend server
+│   ├── api/              # Express REST API (port 3001)
 │   │   ├── src/
-│   │   │   ├── routes/   # API endpoints
+│   │   │   ├── routes/
 │   │   │   │   ├── auth.ts
 │   │   │   │   ├── deploy.ts
-│   │   │   │   └── app.ts
-│   │   │   ├── middleware/
+│   │   │   │   ├── github.ts
+│   │   │   │   ├── app.ts
+│   │   │   │   └── internal.ts    # ← POST /internal/logs & /internal/status
 │   │   │   └── lib/
+│   │   │       ├── redis.ts       # ← Redis publisher
+│   │   │       └── jwt.ts
 │   │   └── index.ts
 │   │
-│   └── worker/           # BullMQ worker for deployments
+│   ├── ws/               # Bun WebSocket service (port 3002)
+│   │   ├── src/
+│   │   │   ├── handler.ts        # ← JWT auth, DB replay, subscriptions
+│   │   │   └── redis.ts          # ← Redis subscriber, projectSubscribers map
+│   │   └── index.ts              # ← Bun.serve with WebSocket upgrade
+│   │
+│   └── worker/           # BullMQ deployment processor
+│       ├── src/
+│       │   ├── lib/
+│       │   │   └── docker.ts     # ← Piped stdout/stderr, onLog callback
+│       │   └── worker.ts         # ← postLog/postStatus helpers
 │       └── index.ts
 │
 ├── packages/
-│   ├── db/               # Shared database setup (Prisma)
+│   ├── db/               # Shared Prisma setup
 │   │   └── prisma/
-│   │       └── schema.prisma
-│   ├── ui/               # Shared UI components
-│   ├── eslint-config/    # Shared ESLint configuration
-│   └── typescript-config/# Shared TypeScript configuration
+│   │       └── schema.prisma     # ← Added BuildLog model
+│   ├── crypto/           # Shared encryption
+│   ├── eslint-config/
+│   └── typescript-config/
 │
-├── turbo.json            # Monorepo configuration
-└── package.json          # Root package configuration
+├── turbo.json
+└── package.json
 ```
 
 ## Getting Started
@@ -125,7 +149,7 @@ mercy/
 
 - **Node.js** ≥ 18
 - **Bun** 1.3.10 or later
-- **Docker & Docker Compose** (for local PostgreSQL and Redis)
+- **Docker & Docker Compose** (for PostgreSQL and Redis)
 - **Git**
 
 ### Installation
@@ -142,16 +166,13 @@ mercy/
    ```
 
 3. **Set up environment variables**
-   
-   Copy the environment template to each app:
+
+   Copy `.env.example` files (or use existing `.env` in dev):
    ```bash
-   cp apps/api/.env.example apps/api/.env
-   ```
-   
-   Edit `apps/api/.env` with your configuration:
-   ```env
+   # apps/api/.env
    DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mercy"
    JWT_SECRET="your-secure-random-secret-key"
+   WORKER_SECRET="dev-worker-secret-change-in-production"
    
    R2_ENDPOINT="https://your-account.r2.cloudflarestorage.com"
    R2_ACCESS_KEY_ID="your-access-key"
@@ -160,19 +181,37 @@ mercy/
    
    REDIS_HOST="localhost"
    REDIS_PORT="6379"
+   ENV_ENCRYPTION_KEY="aac8c44d5d0a8bf8992552d4fdb59c95b12ea030dda9fd5e87dee833965db23d"
+   GITHUB_CLIENT_ID="your-github-client-id"
+   GITHUB_CLIENT_SECRET="your-github-secret"
+   GITHUB_REDIRECT_URI="http://localhost:3001/auth/github/callback"
+   
+   # apps/worker/.env
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mercy"
+   WORKER_SECRET="dev-worker-secret-change-in-production"
+   API_BASE_URL="http://localhost:3001"
+   
+   # apps/ws/.env
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mercy"
+   JWT_SECRET="your-secure-random-secret-key"
+   REDIS_HOST="localhost"
+   REDIS_PORT="6379"
+   WS_PORT="3002"
+   
+   # apps/web/.env.local
+   NEXT_PUBLIC_API_URL=http://localhost:3001
+   NEXT_PUBLIC_WS_URL=ws://localhost:3002
    ```
 
 4. **Start local services**
    ```bash
    docker-compose -f apps/api/docker-compose.yml up -d
    ```
-   
-   This starts PostgreSQL and Redis containers.
 
 5. **Run database migrations**
    ```bash
    cd packages/db
-   bun run db:push
+   bunx prisma db push
    cd ../..
    ```
 
@@ -184,10 +223,11 @@ Start all services in development mode:
 bun run dev
 ```
 
-This command runs all development servers in parallel using Turbo:
+This starts:
 - **Frontend**: http://localhost:3000 (Next.js)
 - **API**: http://localhost:3001 (Express)
-- **Worker**: Runs in background processing deployment jobs
+- **WS Service**: ws://localhost:3002 (Bun WebSocket)
+- **Worker**: Processes deployment jobs in background
 
 ### Running Individual Services
 
@@ -201,53 +241,56 @@ cd apps/web && bun run dev
 cd apps/api && bun run dev
 ```
 
+**WS Service only:**
+```bash
+cd apps/ws && bun run dev
+```
+
 **Worker only:**
 ```bash
 cd apps/worker && bun run dev
 ```
 
-### Building for Production
+### Using the Platform
 
-```bash
-bun run build
-```
+1. **Register/Login** at http://localhost:3000
+2. **Connect GitHub** (optional, for private repos and browsing repos)
+3. **Deploy**: Paste repo URL or select from GitHub, configure env vars
+4. **Watch logs**: Click a project row to open the build log panel
+5. **Access app**: Once deployed, click "Open app" to view your site
 
-This compiles all packages and applications with optimizations.
+## Real-Time Build Log Features
 
-### Type Checking
+- **Live streaming**: See Docker build output as it happens (npm install, build steps, etc.)
+- **Persistent logs**: All build logs stored in database for historical review
+- **Status sync**: Project status (CLONING → BUILDING → DEPLOYED) updates in real-time
+- **Auto-replay**: If you refresh during a build, logs replay from start then resume live
+- **Multi-client**: Multiple browsers watching the same project all receive the same stream
+- **Error visibility**: stderr output highlighted in red for easy error spotting
 
-```bash
-bun run check-types
-```
+## Database Schema
 
-### Linting
-
-```bash
-bun run lint
-```
-
-### Code Formatting
-
-```bash
-bun run format
-```
+Key tables:
+- **User** - Auth & GitHub token storage (encrypted)
+- **Project** - Deployment records, status tracking
+- **EnvVar** - Build environment variables (encrypted)
+- **BuildLog** - Individual build log lines (indexed by projectId, ordered by auto-increment ID)
 
 ## Contributing
 
 ### Setting Up for Development
 
-1. Create a new branch for your feature:
+1. Create a new branch:
    ```bash
    git checkout -b feature/your-feature-name
    ```
 
-2. Make your changes following the code standards below.
+2. Make changes following the code standards.
 
-3. Run tests and checks(comming sooon):
+3. Run checks:
    ```bash
    bun run lint
    bun run check-types
-   bun run build
    ```
 
 4. Commit your changes:
@@ -272,51 +315,53 @@ test: add or update tests
 chore: maintenance tasks
 ```
 
-### Pull Request Guidelines
-
-- Keep PRs focused on a single feature or fix
-- Write descriptive PR titles and descriptions
-- Reference related issues with `Closes #issue-number`
-- Ensure all checks pass before requesting review
-- Request review from maintainers
-
 ## Deployment
 
-### Production Deployment
+### Production Checklist
 
-1. Set production environment variables in your hosting platform
-2. Build the application:
-   ```bash
-   bun run build
-   ```
-3. Deploy using your preferred platform
+1. Set strong `JWT_SECRET` and `WORKER_SECRET` (use `openssl rand -hex 32`)
+2. Configure all R2/Cloudflare credentials
+3. Set `FRONTEND_URL` to your production domain
+4. Ensure PostgreSQL and Redis are provisioned
+5. Scale WS service horizontally; it's stateless (clients reconnect if needed)
+6. Use environment-specific `.env` files, not .env.local
 
-### Environment Variables Required
+### Environment Variables for Production
 
-- `DATABASE_URL` - PostgreSQL connection string
-- `JWT_SECRET` - Secure random secret for JWT signing
-- `R2_ENDPOINT` - Cloudflare R2 endpoint
-- `R2_ACCESS_KEY_ID` - R2 access key
-- `R2_SECRET_ACCESS_KEY` - R2 secret key
-- `R2_BUCKET_NAME` - R2 bucket name
-- `REDIS_HOST` - Redis host
-- `REDIS_PORT` - Redis port
-- `PORT` - API server port (default: 3001)
+All variables from Installation section, plus:
+- `WORKER_SECRET` - Shared secret between API and Worker (32+ chars)
+- `JWT_SECRET` - Secure random key for JWT signing (32+ chars)
+- `ENV_ENCRYPTION_KEY` - 64-character hex string for env var encryption
+- `FRONTEND_URL` - Production frontend domain
 
 ## Troubleshooting
 
 ### Connection Issues
-- Ensure Docker containers are running: `docker-compose -f apps/api/docker-compose.yml ps`
-- Check that PostgreSQL is accessible: `psql $DATABASE_URL -c "SELECT 1"`
-- Verify Redis connection: `redis-cli ping`
+- Ensure containers running: `docker-compose -f apps/api/docker-compose.yml ps`
+- Check PostgreSQL: `psql $DATABASE_URL -c "SELECT 1"`
+- Verify Redis: `redis-cli ping`
+- WS service: Check port 3002 is accessible
+
+### Build Logs Not Showing
+- Verify WS service is running: `curl http://localhost:3002` (should 404)
+- Check `WORKER_SECRET` matches between API and Worker `.env` files
+- Ensure `NEXT_PUBLIC_WS_URL` is set correctly in web `.env.local`
+- Check browser console for WebSocket errors
+
+### Infinite WebSocket Connections
+- This was caused by `onStatusChange` callback being in the effect dependency array
+- Fixed by storing the callback in a `useRef` so the effect only depends on `projectId`
+- If you experience reconnection loops, check that parent isn't creating new function references
 
 ### Build Failures
-- Clear node_modules and reinstall: `rm -rf node_modules && bun install`
-- Reset database: `cd packages/db && bun run db:reset`
+- Clear node_modules: `rm -rf node_modules && bun install`
+- Reset database: `cd packages/db && bunx prisma db push --accept-data-loss`
+- Check Docker is running for build execution
 
 ### Port Conflicts
-- Frontend: Change with `next dev --port <PORT>`
-- API: Set `PORT` environment variable
+- Frontend: `next dev --port <PORT>`
+- API: Set `PORT` env var
+- WS: Set `WS_PORT` env var
 
 ## License
 
@@ -327,5 +372,9 @@ This project is licensed under the MIT License. See LICENSE file for details.
 For issues, feature requests, or questions:
 - Open an issue on GitHub
 - Check existing documentation
+- Review architecture diagrams above
 
 ---
+
+**Last Updated**: April 2026  
+**Architecture**: Monorepo with microservices (API, WS, Worker) + real-time log streaming via Redis pub/sub

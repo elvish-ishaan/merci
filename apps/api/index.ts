@@ -4,6 +4,9 @@ import auth from './src/routes/auth'
 import deploy from './src/routes/deploy'
 import appProxy, { assetFallback } from './src/routes/app'
 import github from './src/routes/github'
+import internal from './src/routes/internal'
+
+if (!process.env['WORKER_SECRET']) throw new Error('WORKER_SECRET env var is required')
 
 const app = express()
 
@@ -13,6 +16,7 @@ app.use(express.json())
 app.get('/health', (_req, res) => res.json({ ok: true }))
 app.use('/auth', auth)
 app.use('/deploy', deploy)
+app.use('/internal', internal)
 app.use('/app', appProxy)
 app.use('/', github)
 app.use(assetFallback)
