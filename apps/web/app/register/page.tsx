@@ -19,6 +19,7 @@ export default function RegisterPage() {
     try {
       const { token } = await api.register(email, password)
       localStorage.setItem('token', token)
+      localStorage.setItem('email', email)
       router.push('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed')
