@@ -18,18 +18,20 @@ model User {
 }
 
 model Project {
-  id           String        @id @default(uuid())
-  userId       String
-  user         User          @relation(fields: [userId], references: [id])
-  repoUrl      String
-  projectName  String
-  status       ProjectStatus @default(QUEUED)
-  bucketPrefix String?
-  deployedUrl  String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  envVars      EnvVar[]
-  buildLogs    BuildLog[]
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id])
+  repoUrl       String
+  projectName   String
+  status        ProjectStatus  @default(QUEUED)
+  bucketPrefix  String?
+  deployedUrl   String?
+  subdomain     String?        @unique
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  envVars       EnvVar[]
+  buildLogs     BuildLog[]
+  customDomains CustomDomain[]
 }
 
 model BuildLog {
@@ -58,4 +60,24 @@ enum ProjectStatus {
   BUILDING
   DEPLOYED
   FAILED
+}
+
+enum DomainSslStatus {
+  PENDING
+  PROVISIONING
+  ACTIVE
+  FAILED
+}
+
+model CustomDomain {
+  id        String          @id @default(uuid())
+  projectId String
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  domain    String          @unique
+  verified  Boolean         @default(false)
+  sslStatus DomainSslStatus @default(PENDING)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([projectId])
 }

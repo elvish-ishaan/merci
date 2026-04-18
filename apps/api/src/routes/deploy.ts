@@ -3,6 +3,7 @@ import { Queue } from 'bullmq'
 import prisma from '../lib/prisma'
 import { authMiddleware } from '../middleware/auth'
 import { encryptValue, decryptValue } from '@repo/crypto'
+import { generateUniqueSubdomain } from '../lib/subdomain'
 
 const deploy = Router()
 
@@ -25,6 +26,7 @@ deploy.get('/', authMiddleware, async (req, res) => {
       status: true,
       bucketPrefix: true,
       deployedUrl: true,
+      subdomain: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -55,6 +57,8 @@ deploy.post('/', authMiddleware, async (req, res) => {
     return
   }
 
+  const subdomain = await generateUniqueSubdomain()
+
   const project = await prisma.$transaction(async (tx) => {
     const created = await tx.project.create({
       data: {
@@ -62,6 +66,7 @@ deploy.post('/', authMiddleware, async (req, res) => {
         repoUrl,
         projectName: projectName ?? repoUrl.split('/').pop()?.replace(/\.git$/, '') ?? 'project',
         status: 'QUEUED',
+        subdomain,
       },
     })
 
@@ -95,6 +100,7 @@ deploy.post('/', authMiddleware, async (req, res) => {
     projectName: project.projectName,
     bucketPrefix: project.bucketPrefix,
     deployedUrl: project.deployedUrl,
+    subdomain: project.subdomain,
   })
 })
 

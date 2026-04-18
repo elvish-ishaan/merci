@@ -17,6 +17,7 @@ interface DeployJobData {
 }
 
 const API_BASE = process.env['API_BASE_URL'] ?? 'http://localhost:3001'
+const BASE_DOMAIN = process.env['BASE_DOMAIN']
 const WORKER_SECRET = process.env['WORKER_SECRET'] ?? ''
 
 async function postLog(projectId: string, line: string, stream: 'stdout' | 'stderr') {
@@ -78,7 +79,13 @@ async function processJob(job: Job<DeployJobData>): Promise<void> {
     console.log(`[${projectId}] Uploading build output from ${buildDir}`)
     await uploadDir(buildDir, prefix)
 
-    const deployedUrl = `${process.env['API_BASE_URL'] ?? 'http://localhost:3001'}/app/${projectId}`
+    const subdomainRow = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { subdomain: true },
+    })
+    const deployedUrl = subdomainRow?.subdomain
+      ? `https://${subdomainRow.subdomain}.${BASE_DOMAIN}`
+      : `http://localhost:3001/app/${projectId}`
     await prisma.project.update({
       where: { id: projectId },
       data: { status: 'DEPLOYED', bucketPrefix: prefix, deployedUrl },

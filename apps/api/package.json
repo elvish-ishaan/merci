@@ -12,11 +12,12 @@
     "@repo/crypto": "*",
     "@repo/db": "*",
     "bcryptjs": "^2.4.3",
+    "bullmq": "^5",
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "ioredis": "^5",
     "jose": "^5.10.0",
-    "bullmq": "^5",
+    "nanoid": "^5.1.9",
     "simple-git": "^3.27.0"
   },
   "devDependencies": {
