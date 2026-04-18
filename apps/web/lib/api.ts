@@ -44,9 +44,9 @@ export const api = {
       }[]
     }>('/deploy'),
 
-  deploy: (repoUrl: string, projectName?: string) =>
+  deploy: (repoUrl: string, projectName?: string, envVars?: { key: string; value: string }[]) =>
     request<{ projectId: string; status: string; projectName: string; bucketPrefix: string | null; deployedUrl: string | null }>(
       '/deploy',
-      { method: 'POST', body: JSON.stringify({ repoUrl, projectName }) },
+      { method: 'POST', body: JSON.stringify({ repoUrl, projectName, envVars }) },
     ),
 }

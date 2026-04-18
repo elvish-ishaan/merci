@@ -11,7 +11,15 @@ export function detectBuildDir(projectDir: string): string {
   throw new Error(`No build output found in ${projectDir}. Expected one of: ${BUILD_DIRS.join(', ')}`)
 }
 
-export async function buildInDocker(projectDir: string): Promise<void> {
+export async function buildInDocker(
+  projectDir: string,
+  envVars?: { key: string; value: string }[],
+): Promise<void> {
+  const envFlags: string[] = []
+  for (const { key, value } of envVars ?? []) {
+    envFlags.push('--env', `${key}=${value}`)
+  }
+
   const proc = Bun.spawn(
     [
       'docker',
@@ -21,6 +29,7 @@ export async function buildInDocker(projectDir: string): Promise<void> {
       `${projectDir}:/app`,
       '-w',
       '/app',
+      ...envFlags,
       'node:20-alpine',
       'sh',
       '-c',

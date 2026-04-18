@@ -26,6 +26,16 @@ model Project {
   deployedUrl  String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  envVars      EnvVar[]
+}
+
+model EnvVar {
+  id             String   @id @default(uuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key            String
+  encryptedValue String
+  createdAt      DateTime @default(now())
 }
 
 enum ProjectStatus {

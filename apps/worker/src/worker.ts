@@ -3,17 +3,20 @@ import os from 'os'
 import path from 'path'
 import fs from 'fs-extra'
 import prisma from '@repo/db'
+import { decryptValue } from '@repo/crypto'
 import { cloneRepo } from './lib/git'
 import { buildInDocker, detectBuildDir } from './lib/docker'
+import { assertViteProject } from './lib/validate'
 import { uploadDir } from './lib/r2'
 
 interface DeployJobData {
   projectId: string
   repoUrl: string
+  encryptedEnvVars?: { key: string; encryptedValue: string }[]
 }
 
 async function processJob(job: Job<DeployJobData>): Promise<void> {
-  const { projectId, repoUrl } = job.data
+  const { projectId, repoUrl, encryptedEnvVars = [] } = job.data
   const tempDir = path.join(os.tmpdir(), `mercy-${projectId}`)
 
   try {
@@ -21,9 +24,16 @@ async function processJob(job: Job<DeployJobData>): Promise<void> {
     console.log(`[${projectId}] Cloning ${repoUrl}`)
     await cloneRepo(repoUrl, tempDir)
 
+    assertViteProject(tempDir)
+
+    const envVars = encryptedEnvVars.map(({ key, encryptedValue }) => ({
+      key,
+      value: decryptValue(encryptedValue),
+    }))
+
     await prisma.project.update({ where: { id: projectId }, data: { status: 'BUILDING' } })
     console.log(`[${projectId}] Building in Docker`)
-    await buildInDocker(tempDir)
+    await buildInDocker(tempDir, envVars)
 
     const buildDir = detectBuildDir(tempDir)
     const prefix = `builds/${projectId}`

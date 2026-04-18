@@ -1,0 +1,11 @@
+{
+  "name": "@repo/crypto",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "typescript": "5.9.2"
+  }
+}

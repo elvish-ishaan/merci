@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.750.0",
+    "@repo/crypto": "*",
     "@repo/db": "*",
     "bullmq": "^5",
     "fs-extra": "^11",

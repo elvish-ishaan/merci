@@ -14,6 +14,7 @@
       "name": "api",
       "dependencies": {
         "@aws-sdk/client-s3": "^3.750.0",
+        "@repo/crypto": "*",
         "@repo/db": "*",
         "bcryptjs": "^2.4.3",
         "bullmq": "^5",
@@ -36,7 +37,6 @@
       "name": "web",
       "version": "0.1.0",
       "dependencies": {
-        "@repo/ui": "*",
         "@tailwindcss/postcss": "^4.2.2",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -65,6 +65,7 @@
       "name": "worker",
       "dependencies": {
         "@aws-sdk/client-s3": "^3.750.0",
+        "@repo/crypto": "*",
         "@repo/db": "*",
         "bullmq": "^5",
         "fs-extra": "^11",
@@ -76,6 +77,13 @@
       },
       "peerDependencies": {
         "typescript": "^5",
+      },
+    },
+    "packages/crypto": {
+      "name": "@repo/crypto",
+      "version": "0.0.0",
+      "devDependencies": {
+        "typescript": "5.9.2",
       },
     },
     "packages/db": {
@@ -109,23 +117,6 @@
     "packages/typescript-config": {
       "name": "@repo/typescript-config",
       "version": "0.0.0",
-    },
-    "packages/ui": {
-      "name": "@repo/ui",
-      "version": "0.0.0",
-      "dependencies": {
-        "react": "^19.2.0",
-        "react-dom": "^19.2.0",
-      },
-      "devDependencies": {
-        "@repo/eslint-config": "*",
-        "@repo/typescript-config": "*",
-        "@types/node": "^22.15.3",
-        "@types/react": "19.2.2",
-        "@types/react-dom": "19.2.2",
-        "eslint": "^9.39.1",
-        "typescript": "5.9.2",
-      },
     },
   },
   "packages": {
@@ -573,13 +564,13 @@
 
     "@radix-ui/rect": ["@radix-ui/rect@1.1.1", "", {}, "sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw=="],
 
+    "@repo/crypto": ["@repo/crypto@workspace:packages/crypto"],
+
     "@repo/db": ["@repo/db@workspace:packages/db"],
 
     "@repo/eslint-config": ["@repo/eslint-config@workspace:packages/eslint-config"],
 
     "@repo/typescript-config": ["@repo/typescript-config@workspace:packages/typescript-config"],
-
-    "@repo/ui": ["@repo/ui@workspace:packages/ui"],
 
     "@sec-ant/readable-stream": ["@sec-ant/readable-stream@0.4.1", "", {}, "sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg=="],
 

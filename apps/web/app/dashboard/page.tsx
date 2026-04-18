@@ -26,12 +26,16 @@ type Project = {
   updatedAt: string
 }
 
+type EnvRow = { key: string; value: string }
+
 const STATUS_VARIANT: Record<string, string> = {
   DEPLOYED: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
   UPLOADING: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
   CLONING: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20',
   FAILED: 'bg-red-500/15 text-red-400 border-red-500/20',
 }
+
+const INITIAL_ENV_ROWS: EnvRow[] = [{ key: '', value: '' }]
 
 function DeployDialog({
   open,
@@ -42,32 +46,57 @@ function DeployDialog({
   onClose: () => void
   onDeployed: () => void
 }) {
+  const [step, setStep] = useState<1 | 2>(1)
   const [repoUrl, setRepoUrl] = useState('')
   const [projectName, setProjectName] = useState('')
+  const [envRows, setEnvRows] = useState<EnvRow[]>(INITIAL_ENV_ROWS)
   const [deploying, setDeploying] = useState(false)
   const [deployError, setDeployError] = useState('')
   const [deployResult, setDeployResult] = useState<{ projectId: string; status: string } | null>(null)
 
+  function reset() {
+    setStep(1)
+    setRepoUrl('')
+    setProjectName('')
+    setEnvRows(INITIAL_ENV_ROWS)
+    setDeploying(false)
+    setDeployError('')
+    setDeployResult(null)
+  }
+
   function handleOpenChange(open: boolean) {
     if (!open) {
-      setRepoUrl('')
-      setProjectName('')
-      setDeployError('')
-      setDeployResult(null)
+      reset()
       onClose()
     }
+  }
+
+  function handleNext(e: FormEvent) {
+    e.preventDefault()
+    setDeployError('')
+    setStep(2)
+  }
+
+  function updateRow(index: number, field: 'key' | 'value', val: string) {
+    setEnvRows((rows) => rows.map((r, i) => (i === index ? { ...r, [field]: val } : r)))
+  }
+
+  function addRow() {
+    if (envRows.length < 50) setEnvRows((rows) => [...rows, { key: '', value: '' }])
+  }
+
+  function removeRow(index: number) {
+    setEnvRows((rows) => (rows.length > 1 ? rows.filter((_, i) => i !== index) : rows))
   }
 
   async function handleDeploy(e: FormEvent) {
     e.preventDefault()
     setDeployError('')
-    setDeployResult(null)
     setDeploying(true)
     try {
-      const result = await api.deploy(repoUrl, projectName || undefined)
+      const filteredEnvVars = envRows.filter((r) => r.key.trim().length > 0)
+      const result = await api.deploy(repoUrl, projectName || undefined, filteredEnvVars)
       setDeployResult(result)
-      setRepoUrl('')
-      setProjectName('')
       onDeployed()
     } catch (err) {
       setDeployError(err instanceof Error ? err.message : 'Deploy failed')
@@ -78,11 +107,18 @@ function DeployDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md bg-neutral-950 border-neutral-800">
+      <DialogContent className={`${step === 2 ? 'sm:max-w-lg' : 'sm:max-w-md'} bg-neutral-950 border-neutral-800`}>
         <DialogHeader>
-          <DialogTitle>New deployment</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>New deployment</DialogTitle>
+            {!deployResult && (
+              <span className="text-xs text-neutral-500">Step {step} of 2</span>
+            )}
+          </div>
           <DialogDescription className="text-neutral-400">
-            Paste a public GitHub repo URL to clone and deploy.
+            {step === 1
+              ? 'Paste a public GitHub repo URL to clone and deploy.'
+              : 'Add environment variables for your build (optional).'}
           </DialogDescription>
         </DialogHeader>
 
@@ -97,8 +133,8 @@ function DeployDialog({
               Close
             </Button>
           </div>
-        ) : (
-          <form onSubmit={handleDeploy} className="space-y-4">
+        ) : step === 1 ? (
+          <form onSubmit={handleNext} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="repo-url">GitHub repo URL</Label>
               <Input
@@ -125,6 +161,61 @@ function DeployDialog({
                 className="bg-neutral-900 border-neutral-800 focus:border-neutral-600 placeholder:text-neutral-600"
               />
             </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit">Next</Button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleDeploy} className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Environment variables</Label>
+                <button
+                  type="button"
+                  onClick={addRow}
+                  disabled={envRows.length >= 50}
+                  className="text-xs text-neutral-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  + Add variable
+                </button>
+              </div>
+              <p className="text-xs text-neutral-500">
+                Prefix with <code className="text-neutral-400">VITE_</code> to expose to your app (e.g.{' '}
+                <code className="text-neutral-400">VITE_API_URL</code>).
+              </p>
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {envRows.map((row, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <Input
+                      type="text"
+                      value={row.key}
+                      onChange={(e) => updateRow(i, 'key', e.target.value)}
+                      placeholder="KEY"
+                      className="bg-neutral-900 border-neutral-800 focus:border-neutral-600 placeholder:text-neutral-600 font-mono text-xs flex-1"
+                    />
+                    <Input
+                      type="text"
+                      value={row.value}
+                      onChange={(e) => updateRow(i, 'value', e.target.value)}
+                      placeholder="value"
+                      className="bg-neutral-900 border-neutral-800 focus:border-neutral-600 placeholder:text-neutral-600 text-xs flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeRow(i)}
+                      disabled={envRows.length === 1}
+                      className="text-neutral-600 hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-lg leading-none pb-0.5"
+                      aria-label="Remove variable"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             {deployError && (
               <p className="text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
@@ -132,16 +223,21 @@ function DeployDialog({
               </p>
             )}
 
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={onClose} disabled={deploying}>
-                Cancel
+            <div className="flex justify-between gap-2">
+              <Button type="button" variant="ghost" onClick={() => setStep(1)} disabled={deploying}>
+                Back
               </Button>
-              <Button type="submit" disabled={deploying} className="gap-2">
-                {deploying && (
-                  <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                )}
-                {deploying ? 'Deploying…' : 'Deploy'}
-              </Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="ghost" onClick={onClose} disabled={deploying}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={deploying} className="gap-2">
+                  {deploying && (
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  )}
+                  {deploying ? 'Deploying…' : 'Deploy'}
+                </Button>
+              </div>
             </div>
           </form>
         )}
