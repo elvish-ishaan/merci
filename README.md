@@ -57,15 +57,6 @@ Mercy enables developers to deploy web applications with minimal configuration. 
                     └───────────────┘
 ```
 
-## Data Flow: Real-Time Build Logs
-
-1. **Worker captures output**: Docker build stdout/stderr piped and line-buffered
-2. **Worker posts logs**: `POST /internal/logs` to API (fire-and-forget)
-3. **API persists & broadcasts**: Writes to `BuildLog` table, publishes to Redis channel `build:{projectId}`
-4. **WS Service fan-out**: Redis subscriber forwards to all connected browsers for that project
-5. **Browser receives**: WebSocket receives live log lines; client deduplicates by ID during replay phase
-6. **Status updates**: Status changes also published via same Redis channel and forwarded to UI
-
 ## Tech Stack
 
 ### Frontend
