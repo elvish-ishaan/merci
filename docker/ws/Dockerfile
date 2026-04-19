@@ -4,26 +4,29 @@ FROM oven/bun:latest AS builder
 WORKDIR /app
 
 # Copy monorepo root files
-COPY package.json bun.lockb ./
+COPY package.json bun.lock turbo.json bunfig.toml ./
 
 # Copy workspace packages
 COPY packages ./packages
 COPY apps/ws ./apps/ws
 
 # Install dependencies
-RUN bun install --frozen-lockfile
+RUN bun install
+
+# Generate the prisma client
+RUN cd packages/db && bun run db:generate
 
 # Build workspace packages
 RUN cd packages && bun run build || true
 
 
 # Runtime stage
-FROM oven/bun:distroless
+FROM oven/bun:slim
 
 WORKDIR /app
 
 # Copy package.json and lock file
-COPY --from=builder /app/package.json /app/bun.lockb ./
+COPY --from=builder /app/package.json ./
 
 # Copy built dependencies
 COPY --from=builder /app/node_modules ./node_modules
@@ -42,7 +45,7 @@ EXPOSE 3002
 
 # Health check via HTTP endpoint or Redis connection
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD bun run --eval "const Redis = require('ioredis'); const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379'); redis.ping().then(() => process.exit(0)).catch(() => process.exit(1))"
+  CMD ["bun", "--eval", "const Redis = require('ioredis'); const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379'); redis.ping().then(() => process.exit(0)).catch(() => process.exit(1))"]
 
 # Start WebSocket service
-CMD ["bun", "run", "start"]
+CMD ["bun", "run", "index.ts"]
