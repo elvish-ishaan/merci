@@ -4,7 +4,7 @@ FROM oven/bun:latest AS builder
 WORKDIR /app
 
 # Copy monorepo root files
-COPY package.json bun.lockb ./
+COPY package.json bun.lock turbo.json ./
 
 # Copy workspace packages
 COPY packages ./packages
@@ -13,17 +13,13 @@ COPY apps/api ./apps/api
 # Install dependencies
 RUN bun install --frozen-lockfile
 
-# Build workspace packages
-RUN cd packages && bun run build || true
-
-
 # Runtime stage
 FROM oven/bun:distroless
 
 WORKDIR /app
 
 # Copy package.json and lock file
-COPY --from=builder /app/package.json /app/bun.lockb ./
+COPY --from=builder /app/package.json  ./
 
 # Copy built dependencies
 COPY --from=builder /app/node_modules ./node_modules

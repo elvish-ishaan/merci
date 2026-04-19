@@ -4,7 +4,7 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Copy monorepo root files
-COPY package.json package-lock.json yarn.lock* pnpm-lock.yaml* bun.lockb* ./
+COPY package.json bun.lock package-lock.json yarn.lock* pnpm-lock.yaml* bun.lockb* ./
 
 # Copy workspace packages
 COPY packages ./packages
