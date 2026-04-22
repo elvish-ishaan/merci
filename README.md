@@ -1,4 +1,4 @@
-# Mercy - Static Site Deployment Platform
+# Mercy - Deployment Platform
 
 Mercy is a modern deployment platform that simplifies deploying static sites directly from Git repositories. Connect your GitHub repo, and Mercy handles cloning, building, and hosting—all in one seamless workflow.
 
