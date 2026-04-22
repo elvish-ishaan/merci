@@ -138,7 +138,6 @@ services:
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
       R2_BUCKET_NAME: ${R2_BUCKET_NAME}
       MERCIO_CACHE_DIR: /var/mercio
-      WORKERD_BIN: /app/node_modules/workerd/bin/workerd
     volumes:
       - mercio_cache:/var/mercio
     depends_on:

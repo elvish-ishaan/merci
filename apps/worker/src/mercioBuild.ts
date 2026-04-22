@@ -116,6 +116,24 @@ export async function mercioBuildJob(job: Job<MercioBuildJobData>): Promise<void
       await runDockerBuild(srcDir, buildCommand)
     }
 
+    // 3b. Auto-install deps if package.json exists but node_modules was not included/built
+    const hasPkg = await fs.pathExists(path.join(srcDir, 'package.json'))
+    const hasModules = await fs.pathExists(path.join(srcDir, 'node_modules'))
+    if (hasPkg && !hasModules) {
+      const install = Bun.spawn(['bun', 'install', '--frozen-lockfile'], {
+        cwd: srcDir,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      })
+      const [exitCode, stderr] = await Promise.all([
+        install.exited,
+        new Response(install.stderr).text(),
+      ])
+      if (exitCode !== 0) {
+        throw new Error(`Dependency installation failed:\n${stderr}`)
+      }
+    }
+
     // 4. Write shim that imports user's entry and re-exports as fetch handler
     const entryResolved = path.resolve(srcDir, entry)
     if (!await fs.pathExists(entryResolved)) {
@@ -135,9 +153,17 @@ export async function mercioBuildJob(job: Job<MercioBuildJobData>): Promise<void
       platform: 'neutral',
       target: 'es2022',
       outfile: workerOut,
-      // workerd supports nodejs_compat so node builtins resolve; treat them as external
-      // to avoid bundling polyfills
-      packages: 'external',
+      // Only node built-ins are external (workerd resolves them via nodejs_compat).
+      // Everything else (user deps like `ms`) must be bundled — workerd does not
+      // support dynamic require at runtime.
+      external: [
+        'node:*',
+        'assert', 'buffer', 'child_process', 'cluster', 'crypto', 'dgram',
+        'dns', 'events', 'fs', 'http', 'http2', 'https', 'module', 'net',
+        'os', 'path', 'perf_hooks', 'process', 'punycode', 'querystring',
+        'readline', 'stream', 'string_decoder', 'timers', 'tls', 'tty',
+        'url', 'util', 'v8', 'vm', 'worker_threads', 'zlib',
+      ],
     })
 
     // 6. Upload worker.mjs + metadata to R2

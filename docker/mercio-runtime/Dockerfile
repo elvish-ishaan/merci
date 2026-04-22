@@ -1,47 +1,32 @@
-# Builder stage
-FROM oven/bun:latest AS builder
+FROM oven/bun:latest
 
 WORKDIR /app
 
-# Copy monorepo root files
+# Copy root manifests
 COPY package.json bun.lock turbo.json bunfig.toml ./
 
-# Copy workspace packages
+# Copy every workspace package.json so bun can resolve the full workspace graph
+# without needing the source files during install
+COPY apps/api/package.json             ./apps/api/package.json
+COPY apps/mercio-runtime/package.json  ./apps/mercio-runtime/package.json
+COPY apps/web/package.json             ./apps/web/package.json
+COPY apps/worker/package.json          ./apps/worker/package.json
+COPY apps/ws/package.json              ./apps/ws/package.json
+COPY packages/crypto/package.json      ./packages/crypto/package.json
+COPY packages/db/package.json          ./packages/db/package.json
+COPY packages/eslint-config/package.json    ./packages/eslint-config/package.json
+COPY packages/typescript-config/package.json ./packages/typescript-config/package.json
+
+# Install all dependencies — bun resolves and downloads the linux workerd binary here
+RUN bun install --frozen-lockfile
+
+# Copy source for packages that mercio-runtime depends on
 COPY packages ./packages
 COPY apps/mercio-runtime ./apps/mercio-runtime
 
-# Install dependencies
-RUN bun install
-
-# Generate the prisma client
-RUN cd packages/db && bun run db:generate
-
-# Build workspace packages
-RUN cd packages && bun run build || true
-
-
-# Runtime stage
-FROM oven/bun:slim
-
-WORKDIR /app
-
-# Copy package.json and lock file
-COPY --from=builder /app/package.json ./
-
-# Copy built dependencies
-COPY --from=builder /app/node_modules ./node_modules
-
-# Copy workspace packages
-COPY --from=builder /app/packages ./packages
-
-# Copy mercio-runtime service source
-COPY --from=builder /app/apps/mercio-runtime ./apps/mercio-runtime
-
-# Create cache directory for worker bundles
+# Cache directory for deployed worker bundles
 RUN mkdir -p /var/mercio
 
-# Set working directory to mercio-runtime
 WORKDIR /app/apps/mercio-runtime
 
-# Start mercio-runtime service
 CMD ["bun", "run", "index.ts"]

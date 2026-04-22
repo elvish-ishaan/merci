@@ -20,15 +20,12 @@ function getWorkerdBin(): string {
 
 function resolveWorkerdBin(): string {
   try {
-    const resolved = require.resolve('workerd/bin/workerd')
-    if (process.platform === 'win32') {
-      const withExe = resolved + '.exe'
-      if (require('node:fs').existsSync(withExe)) return withExe
-    }
-    return resolved
-  } catch {
-    return process.platform === 'win32' ? 'workerd.exe' : 'workerd'
-  }
+    const pkgDir = path.dirname(require.resolve('workerd/package.json'))
+    const binName = process.platform === 'win32' ? 'workerd.exe' : 'workerd'
+    const binPath = path.join(pkgDir, 'bin', binName)
+    if (require('node:fs').existsSync(binPath)) return binPath
+  } catch {}
+  return process.platform === 'win32' ? 'workerd.exe' : 'workerd'
 }
 
 async function getFreePort(): Promise<number> {
@@ -39,8 +36,9 @@ async function getFreePort(): Promise<number> {
 }
 
 function buildCapnpConfig(workerMjsPath: string, port: number): string {
-  // workerd's embed path must be absolute and use forward slashes
-  const embedPath = workerMjsPath.replace(/\\/g, '/')
+  // workerd resolves `embed` paths relative to the .capnp file. worker.mjs sits
+  // next to config.capnp, so just reference it by basename.
+  const embedPath = path.basename(workerMjsPath)
   return `using Workerd = import "/workerd/workerd.capnp";
 
 const config :Workerd.Config = (
@@ -83,12 +81,37 @@ async function spawnWorkerd(functionId: string, workerMjsPath: string): Promise<
   const configPath = path.join(configDir, 'config.capnp')
   await fs.writeFile(configPath, buildCapnpConfig(workerMjsPath, port), 'utf8')
 
-  const proc = Bun.spawn([getWorkerdBin(), 'serve', configPath], {
+  const bin = getWorkerdBin()
+  console.log(`[mercio-runtime] spawning workerd: ${bin} serve ${configPath} (port ${port})`)
+
+  const proc = Bun.spawn([bin, 'serve', configPath], {
     stdout: 'pipe',
     stderr: 'pipe',
   })
 
-  await waitUntilReady(port)
+  const pipe = async (stream: ReadableStream<Uint8Array> | null, tag: string) => {
+    if (!stream) return
+    const reader = stream.getReader()
+    const decoder = new TextDecoder()
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      process.stderr.write(`[workerd:${tag}:${functionId}] ${decoder.decode(value)}`)
+    }
+  }
+  void pipe(proc.stdout as ReadableStream<Uint8Array>, 'out')
+  void pipe(proc.stderr as ReadableStream<Uint8Array>, 'err')
+
+  proc.exited.then((code) => {
+    console.log(`[mercio-runtime] workerd for ${functionId} exited with code ${code}`)
+  })
+
+  try {
+    await waitUntilReady(port)
+  } catch (err) {
+    proc.kill()
+    throw err
+  }
 
   return { proc, port, lastUsedAt: Date.now() }
 }

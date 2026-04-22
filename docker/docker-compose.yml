@@ -11,7 +11,6 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       MERCIO_CACHE_DIR: /var/mercio
-      WORKERD_BIN: /app/node_modules/workerd/bin/workerd
     volumes:
       - mercio_cache:/var/mercio
     depends_on:
