@@ -15,7 +15,6 @@ const BUCKET = process.env['R2_BUCKET_NAME']!
 export interface MercioBuildJobData {
   functionId: string
   zipKey: string
-  buildCommand: string | null
   entry: string
 }
 
@@ -53,29 +52,8 @@ export default {
 }
 `
 
-async function runDockerBuild(workDir: string, buildCommand: string): Promise<void> {
-  const proc = Bun.spawn(
-    [
-      'docker', 'run', '--rm',
-      '-v', `${workDir}:/app`,
-      '-w', '/app',
-      'node:20-alpine',
-      'sh', '-c', buildCommand,
-    ],
-    { stdout: 'pipe', stderr: 'pipe' }
-  )
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ])
-  if (exitCode !== 0) {
-    throw new Error(`Build command failed (exit ${exitCode}):\n${stderr || stdout}`)
-  }
-}
-
 export async function mercioBuildJob(job: Job<MercioBuildJobData>): Promise<void> {
-  const { functionId, zipKey, buildCommand, entry } = job.data
+  const { functionId, zipKey, entry } = job.data
   const tmpDir = path.join(os.tmpdir(), `mercio-${functionId}`)
   const srcDir = path.join(tmpDir, 'src')
   const outDir = path.join(tmpDir, 'out')
@@ -111,30 +89,7 @@ export async function mercioBuildJob(job: Job<MercioBuildJobData>): Promise<void
       }
     }
 
-    // 3. Run build command in Docker if provided
-    if (buildCommand) {
-      await runDockerBuild(srcDir, buildCommand)
-    }
-
-    // 3b. Auto-install deps if package.json exists but node_modules was not included/built
-    const hasPkg = await fs.pathExists(path.join(srcDir, 'package.json'))
-    const hasModules = await fs.pathExists(path.join(srcDir, 'node_modules'))
-    if (hasPkg && !hasModules) {
-      const install = Bun.spawn(['bun', 'install', '--frozen-lockfile'], {
-        cwd: srcDir,
-        stdout: 'pipe',
-        stderr: 'pipe',
-      })
-      const [exitCode, stderr] = await Promise.all([
-        install.exited,
-        new Response(install.stderr).text(),
-      ])
-      if (exitCode !== 0) {
-        throw new Error(`Dependency installation failed:\n${stderr}`)
-      }
-    }
-
-    // 4. Write shim that imports user's entry and re-exports as fetch handler
+    // 3. Write shim that imports user's entry and re-exports as fetch handler
     const entryResolved = path.resolve(srcDir, entry)
     if (!await fs.pathExists(entryResolved)) {
       throw new Error(`Entry file "${entry}" not found in the uploaded zip`)
@@ -144,7 +99,7 @@ export async function mercioBuildJob(job: Job<MercioBuildJobData>): Promise<void
     const shimContent = SHIM_CONTENT.replace('__USER_ENTRY__', entryResolved.replace(/\\/g, '/'))
     await fs.writeFile(shimPath, shimContent, 'utf8')
 
-    // 5. Bundle shim + user code into a single ESM worker.mjs
+    // 4. Bundle shim + user code into a single ESM worker.mjs
     const workerOut = path.join(outDir, 'worker.mjs')
     await esbuild.build({
       entryPoints: [shimPath],
@@ -166,7 +121,7 @@ export async function mercioBuildJob(job: Job<MercioBuildJobData>): Promise<void
       ],
     })
 
-    // 6. Upload worker.mjs + metadata to R2
+    // 5. Upload worker.mjs + metadata to R2
     const bundleKey = `mercio/${functionId}/worker.mjs`
     const workerBytes = await fs.readFile(workerOut)
     await r2.send(
@@ -188,7 +143,7 @@ export async function mercioBuildJob(job: Job<MercioBuildJobData>): Promise<void
       })
     )
 
-    // 7. Mark deployed
+    // 6. Mark deployed
     await prisma.mercioFunction.update({
       where: { id: functionId },
       data: { status: 'DEPLOYED', bundleKey },

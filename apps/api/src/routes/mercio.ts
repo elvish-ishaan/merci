@@ -31,9 +31,8 @@ const API_BASE_URL = process.env['API_BASE_URL'] ?? 'http://localhost:3001'
 
 mercio.post('/upload', authMiddleware, upload.single('zip'), async (req, res) => {
   const userId = res.locals['userId'] as string
-  const { name, buildCommand, entry } = req.body as {
+  const { name, entry } = req.body as {
     name?: string
-    buildCommand?: string
     entry?: string
   }
 
@@ -51,7 +50,6 @@ mercio.post('/upload', authMiddleware, upload.single('zip'), async (req, res) =>
     data: {
       userId,
       name: name.trim(),
-      buildCommand: buildCommand?.trim() || null,
       entry: entry?.trim() || 'index.js',
       status: 'QUEUED',
     },
@@ -70,7 +68,6 @@ mercio.post('/upload', authMiddleware, upload.single('zip'), async (req, res) =>
   await buildQueue.add('build', {
     functionId: fn.id,
     zipKey,
-    buildCommand: fn.buildCommand,
     entry: fn.entry,
   })
 
@@ -92,7 +89,6 @@ mercio.get('/', authMiddleware, async (_req, res) => {
       name: true,
       status: true,
       entry: true,
-      buildCommand: true,
       errorMessage: true,
       bundleKey: true,
       createdAt: true,

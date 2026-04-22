@@ -9,7 +9,7 @@ Ready-to-upload example functions. Each folder is one deployable function.
 | `hello-world` | Returns `{ hello: "<name>" }` from a query param  | _(none)_       | `index.js` |
 | `echo`        | Echoes the full request back as JSON              | _(none)_       | `index.js` |
 | `json-api`    | Tiny in-memory CRUD API with routing              | _(none)_       | `index.js` |
-| `with-deps`   | Uses the `ms` npm package, shows dependency flow  | `npm install`  | `index.js` |
+| `with-deps`   | Uses the `ms` npm package, shows dependency flow  | run `npm install` locally before zipping | `index.js` |
 
 ---
 
@@ -50,14 +50,10 @@ curl -X POST http://localhost:3001/api/mercio/upload \
   -F "entry=index.js"
 ```
 
-For the `with-deps` example, add the build command:
+For the `with-deps` example, install dependencies locally before zipping:
 ```bash
-curl -X POST http://localhost:3001/api/mercio/upload \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "zip=@with-deps.zip" \
-  -F "name=with-deps" \
-  -F "buildCommand=npm install" \
-  -F "entry=index.js"
+cd with-deps && npm install && cd ..
+bash zip.sh with-deps
 ```
 
 Response:
