@@ -21,6 +21,18 @@ services:
       - api
       - ws
 
+  migrate:
+    image: elvishishaan/merci-api:latest
+    command: sh -c "cd /app/packages/db && bunx prisma migrate deploy"
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - merci
+    restart: "no"
+
   web:
     image: elvishishaan/merci-web:latest
     environment:
@@ -57,6 +69,8 @@ services:
       GITHUB_REDIRECT_URI: ${GITHUB_REDIRECT_URI}
       FRONTEND_URL: https://${APP_DOMAIN}
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -77,6 +91,8 @@ services:
       REDIS_URL: redis://redis:6379
       WS_PORT: 3002
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -99,6 +115,8 @@ services:
       ENV_ENCRYPTION_KEY: ${ENV_ENCRYPTION_KEY}
       API_BASE_URL: http://api:3001
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:

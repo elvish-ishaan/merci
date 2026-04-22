@@ -1,45 +1,41 @@
-# Builder stage
+# --- Builder Stage ---
 FROM oven/bun:latest AS builder
 
 WORKDIR /app
 
-# Copy monorepo root files
-COPY package.json bun.lock turbo.json bunfig.toml ./
+# 1. Copy config files to root
+COPY package.json bun.lockb* turbo.json bunfig.toml ./
 
-# Copy workspace packages
+# 2. Copy workspace folders
 COPY packages ./packages
 COPY apps/api ./apps/api
 
-# Install dependencies
+# 3. Install ALL dependencies
 RUN bun install
 
-# Generate the prisma client
-RUN cd packages/db && bun run db:generate
+# 4. Generate Prisma Client 
+RUN cd packages/db && bunx prisma generate
 
-# Runtime stage
+# --- Runtime Stage ---
 FROM oven/bun:slim
 
 WORKDIR /app
 
-# Copy package.json and lock file
-COPY --from=builder /app/package.json  ./
+# 5. Copy configuration files so Turbo/Bun context is preserved
+COPY --from=builder /app/package*.json /app/bun.lock* /app/turbo.json /app/bunfig.toml ./
 
-# Copy built dependencies
+# 6. Copy the heavy lifting
 COPY --from=builder /app/node_modules ./node_modules
-
-# Copy workspace packages
 COPY --from=builder /app/packages ./packages
-
-# Copy API source
 COPY --from=builder /app/apps/api ./apps/api
 
-# Set working directory to API
+# 7. Set WORKDIR to the root for the CMD to have full context, 
 WORKDIR /app/apps/api
 
 # Expose port
 EXPOSE 3001
 
-# Health check
+# Health check (matches your logic)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD ["bun", "--eval", "const res = await fetch('http://localhost:' + (process.env.PORT ?? 3001) + '/health'); process.exit(res.ok ? 0 : 1)"]
 

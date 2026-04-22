@@ -9,11 +9,19 @@ export async function generateUniqueSubdomain(): Promise<string> {
   for (let i = 0; i < 10; i++) {
     const id = nanoid6()
     if (RESERVED.has(id)) continue
-    const exists = await prisma.project.findUnique({ where: { subdomain: id }, select: { id: true } })
-    if (!exists) return id
+    try {
+      const exists = await prisma.project.findUnique({ where: { subdomain: id }, select: { id: true } })
+      if (!exists) return id
+    } catch (error) {
+      throw new Error(`Database error while generating subdomain: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
   const fallback = nanoid7()
-  const exists = await prisma.project.findUnique({ where: { subdomain: fallback }, select: { id: true } })
-  if (!exists) return fallback
+  try {
+    const exists = await prisma.project.findUnique({ where: { subdomain: fallback }, select: { id: true } })
+    if (!exists) return fallback
+  } catch (error) {
+    throw new Error(`Database error while generating subdomain: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
   throw new Error('Could not generate unique subdomain')
 }

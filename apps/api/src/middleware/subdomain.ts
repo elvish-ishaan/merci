@@ -15,49 +15,61 @@ export async function subdomainMiddleware(req: Request, res: Response, next: Nex
       return
     }
 
-    const project = await prisma.project.findUnique({
-      where: { subdomain },
-      select: { id: true, status: true },
-    })
+    try {
+      const project = await prisma.project.findUnique({
+        where: { subdomain },
+        select: { id: true, status: true },
+      })
 
-    if (!project) {
-      res.status(404).json({ error: 'App not found' })
+      if (!project) {
+        res.status(404).json({ error: 'App not found' })
+        return
+      }
+
+      if (project.status !== 'DEPLOYED') {
+        res.status(503).json({ error: 'App not deployed yet' })
+        return
+      }
+
+      ;(req as any).subdomainProjectId = project.id
+      return next()
+    } catch (error) {
+      console.error('Error resolving subdomain:', error)
+      res.status(500).json({ error: 'Internal server error' })
       return
     }
-
-    if (project.status !== 'DEPLOYED') {
-      res.status(503).json({ error: 'App not deployed yet' })
-      return
-    }
-
-    ;(req as any).subdomainProjectId = project.id
-    return next()
   }
 
   // Check custom domain routing
-  const customDomain = await prisma.customDomain.findUnique({
-    where: { domain: host, verified: true },
-    include: { project: { select: { id: true, status: true } } },
-  })
+  try {
+    const customDomain = await prisma.customDomain.findFirst({
+      where: { domain: host, verified: true },
+      include: { project: { select: { id: true, status: true } } },
+    })
 
-  if (customDomain) {
-    if (customDomain.project.status !== 'DEPLOYED') {
-      res.status(503).json({ error: 'App not deployed yet' })
-      return
+    if (customDomain) {
+      if (customDomain.project.status !== 'DEPLOYED') {
+        res.status(503).json({ error: 'App not deployed yet' })
+        return
+      }
+
+      // Update sslStatus to ACTIVE on first successful request
+      if (customDomain.sslStatus === 'PROVISIONING') {
+        prisma.customDomain
+          .update({
+            where: { id: customDomain.id },
+            data: { sslStatus: 'ACTIVE' },
+          })
+          .catch((error) => console.error('Error updating SSL status:', error))
+      }
+
+      ;(req as any).subdomainProjectId = customDomain.project.id
+      return next()
     }
-
-    // Update sslStatus to ACTIVE on first successful request
-    if (customDomain.sslStatus === 'PROVISIONING') {
-      prisma.customDomain
-        .update({
-          where: { id: customDomain.id },
-          data: { sslStatus: 'ACTIVE' },
-        })
-        .catch(() => {}) // fire and forget
-    }
-
-    ;(req as any).subdomainProjectId = customDomain.project.id
-    return next()
+  } catch (error) {
+    console.error('Error resolving custom domain:', error)
+    res.status(500).json({ error: 'Internal server error' })
+    return
   }
 
   next()

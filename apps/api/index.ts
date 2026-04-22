@@ -29,10 +29,32 @@ app.get('/health', (_req, res) => res.json({ ok: true }))
 app.get('/internal/domain-check', async (req, res) => {
   const domain = req.query['domain'] as string
   if (!domain) return res.status(400).end()
-  const record = await prisma.customDomain.findUnique({
-    where: { domain, verified: true },
-  })
-  res.status(record ? 200 : 403).end()
+
+  const BASE_DOMAIN = process.env['BASE_DOMAIN']
+
+  try {
+    // Allow project subdomains (e.g., abc123.app.example.com)
+    if (BASE_DOMAIN && domain.endsWith(`.${BASE_DOMAIN}`)) {
+      const subdomain = domain.slice(0, -(`.${BASE_DOMAIN}`).length)
+      if (subdomain && !subdomain.includes('.')) {
+        const project = await prisma.project.findUnique({
+          where: { subdomain },
+          select: { status: true },
+        })
+        res.status(project?.status === 'DEPLOYED' ? 200 : 403).end()
+        return
+      }
+    }
+
+    // Allow verified custom domains
+    const record = await prisma.customDomain.findFirst({
+      where: { domain, verified: true },
+    })
+    res.status(record ? 200 : 403).end()
+  } catch (error) {
+    console.error('Error in domain check:', error)
+    res.status(500).end()
+  }
 })
 
 app.use('/auth', auth)

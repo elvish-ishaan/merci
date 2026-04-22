@@ -1,14 +1,27 @@
 {
+  email {$ACME_EMAIL}
   on_demand_tls {
-    ask http://localhost:3000/internal/domain-check
+    ask http://api:3001/internal/domain-check
   }
+}
+
+{$APP_DOMAIN} {
+  reverse_proxy web:3000
+}
+
+api.{$APP_DOMAIN} {
+  reverse_proxy api:3001
+}
+
+ws.{$APP_DOMAIN} {
+  reverse_proxy ws:3002
 }
 
 :443 {
   tls {
     on_demand
   }
-  reverse_proxy localhost:3000
+  reverse_proxy api:3001
 }
 
 :80 {
