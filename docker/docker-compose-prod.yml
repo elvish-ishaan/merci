@@ -124,6 +124,33 @@ services:
     networks:
       - merci
 
+  mercio-runtime:
+    build:
+      context: ..
+      dockerfile: docker/mercio-runtime/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      R2_ENDPOINT: ${R2_ENDPOINT}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME}
+      MERCIO_CACHE_DIR: /var/mercio
+      WORKERD_BIN: /app/node_modules/workerd/bin/workerd
+    volumes:
+      - mercio_cache:/var/mercio
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - merci
+
   postgres:
     image: postgres:alpine
     restart: unless-stopped
@@ -162,6 +189,7 @@ volumes:
   redis_data:
   caddy_data:
   caddy_config:
+  mercio_cache:
 
 networks:
   merci:

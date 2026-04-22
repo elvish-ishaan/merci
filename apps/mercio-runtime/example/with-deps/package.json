@@ -1,0 +1,7 @@
+{
+  "name": "with-deps",
+  "type": "commonjs",
+  "dependencies": {
+    "ms": "^2.1.3"
+  }
+}

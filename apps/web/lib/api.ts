@@ -69,4 +69,51 @@ export const api = {
     const t = token()
     if (t) window.location.href = `${BASE}/auth/github?token=${encodeURIComponent(t)}`
   },
+
+  getMercioFunctions: () =>
+    request<{
+      functions: {
+        id: string
+        name: string
+        status: string
+        entry: string
+        buildCommand: string | null
+        errorMessage: string | null
+        bundleKey: string | null
+        createdAt: string
+        updatedAt: string
+      }[]
+    }>('/api/mercio'),
+
+  getMercioFunction: (id: string) =>
+    request<{
+      function: {
+        id: string
+        name: string
+        status: string
+        entry: string
+        buildCommand: string | null
+        errorMessage: string | null
+        bundleKey: string | null
+        createdAt: string
+        updatedAt: string
+      }
+      invokeUrl: string
+    }>(`/api/mercio/${id}`),
+
+  uploadMercioFunction: (formData: FormData) => {
+    const t = token()
+    return fetch(`${BASE}/api/mercio/upload`, {
+      method: 'POST',
+      headers: t ? { Authorization: `Bearer ${t}` } : {},
+      body: formData,
+    }).then(async (res) => {
+      const data = await res.json()
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Upload failed')
+      return data as { id: string; name: string; status: string; invokeUrl: string }
+    })
+  },
+
+  deleteMercioFunction: (id: string) =>
+    request<{ ok: boolean }>(`/api/mercio/${id}`, { method: 'DELETE' }),
 }
