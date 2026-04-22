@@ -18,13 +18,17 @@ export interface MercioBuildJobData {
   entry: string
 }
 
-// Shim that wraps Node-style handler (module.exports = async (req) => ({status, headers, body}))
-// into the Cloudflare Workers fetch(request) contract that workerd expects.
+// Universal shim: supports both Hono/CF Workers style (export default app with .fetch method)
+// and legacy Mercio custom handlers (export default async (req) => ({status, headers, body})).
 const SHIM_CONTENT = `
-import handler from '__USER_ENTRY__'
+import userExport from '__USER_ENTRY__'
 
 export default {
-  async fetch(request) {
+  async fetch(request, env, ctx) {
+    if (userExport != null && typeof userExport.fetch === 'function') {
+      return userExport.fetch(request, env, ctx)
+    }
+
     const url = new URL(request.url)
     const method = request.method
     const headers = Object.fromEntries(request.headers)
@@ -40,7 +44,7 @@ export default {
     }
     const req = { method, url: request.url, path: url.pathname, headers, query, body }
     try {
-      const r = (await handler(req)) ?? {}
+      const r = (await userExport(req)) ?? {}
       return new Response(r.body ?? '', {
         status: r.status ?? 200,
         headers: r.headers ?? {},
@@ -106,6 +110,9 @@ export async function mercioBuildJob(job: Job<MercioBuildJobData>): Promise<void
       bundle: true,
       format: 'esm',
       platform: 'neutral',
+      // workerd/browser conditions ensure packages like Hono resolve their compiled
+      // JS exports rather than raw TypeScript source paths.
+      conditions: ['workerd', 'browser', 'import', 'module'],
       target: 'es2022',
       outfile: workerOut,
       // Only node built-ins are external (workerd resolves them via nodejs_compat).

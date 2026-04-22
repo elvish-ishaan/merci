@@ -10,6 +10,8 @@ Ready-to-upload example functions. Each folder is one deployable function.
 | `echo`        | Echoes the full request back as JSON              | _(none)_       | `index.js` |
 | `json-api`    | Tiny in-memory CRUD API with routing              | _(none)_       | `index.js` |
 | `with-deps`   | Uses the `ms` npm package, shows dependency flow  | run `npm install` locally before zipping | `index.js` |
+| `hono-app`    | Hono web framework — routing, params, JSON        | run `npm install` locally before zipping | `index.js` |
+| `hono-ts`     | Hono + TypeScript — typed routes, interfaces, generics | run `npm install` locally before zipping | `index.ts` |
 
 ---
 
@@ -50,10 +52,16 @@ curl -X POST http://localhost:3001/api/mercio/upload \
   -F "entry=index.js"
 ```
 
-For the `with-deps` example, install dependencies locally before zipping:
+For the `with-deps`, `hono-app`, and `hono-ts` examples, install dependencies locally before zipping:
 ```bash
 cd with-deps && npm install && cd ..
 bash zip.sh with-deps
+
+cd hono-app && npm install && cd ..
+bash zip.sh hono-app
+
+cd hono-ts && npm install && cd ..
+bash zip.sh hono-ts
 ```
 
 Response:
@@ -99,13 +107,62 @@ curl "http://localhost:3001/mercio/$ID/items"
 # with-deps
 curl "http://localhost:3001/mercio/$ID?ms=86400000"
 # {"input":86400000,"human":"1d"}
+
+# hono-app — root
+curl "http://localhost:3001/mercio/$ID"
+# {"message":"Hello from Hono on Mercio!"}
+
+# hono-app — path param
+curl "http://localhost:3001/mercio/$ID/hello/world"
+# {"message":"Hello, world!"}
+
+# hono-app — POST echo
+curl -X POST "http://localhost:3001/mercio/$ID/echo" \
+  -H "content-type: application/json" \
+  -d '{"test":true}'
+# {"echo":{"test":true}}
+
+# hono-ts — list users (typed response)
+curl "http://localhost:3001/mercio/$ID/users"
+# {"success":true,"data":[...],"timestamp":"..."}
+
+# hono-ts — get user by id
+curl "http://localhost:3001/mercio/$ID/users/1"
+
+# hono-ts — create user
+curl -X POST "http://localhost:3001/mercio/$ID/users" \
+  -H "content-type: application/json" \
+  -d '{"name":"Charlie","email":"charlie@example.com"}'
 ```
 
 ---
 
 ## Writing your own function
 
-Create a folder with at least an `index.js`:
+### Option A — Hono (recommended)
+
+```ts
+import { Hono } from 'hono'
+
+const app = new Hono()
+
+app.get('/', (c) => c.json({ ok: true }))
+app.get('/hello/:name', (c) => c.json({ message: `Hello, ${c.req.param('name')}!` }))
+app.post('/data', async (c) => {
+  const body = await c.req.json()
+  return c.json({ received: body })
+})
+
+export default app
+```
+
+Rules:
+- Set `"type": "module"` in `package.json` and add `hono` as a dependency.
+- Run `npm install` before zipping — esbuild resolves Hono from your local `node_modules`.
+- Use `entry=index.ts` (or `.js`) when uploading.
+- All Hono features work: routing, middleware, path params, `c.json()`, `c.text()`, etc.
+
+### Option B — Custom handler (legacy)
 
 ```js
 module.exports = async (req) => {
@@ -124,9 +181,12 @@ module.exports = async (req) => {
 ```
 
 Rules:
-- Entry file must use `module.exports = async (req) => ({...})`.
 - Return `{ status, headers, body }` — all fields optional (defaults: 200, `{}`, `""`).
 - `body` must be a **string** — call `JSON.stringify()` yourself.
-- If you have `package.json` with dependencies, set `buildCommand` to `npm install` at upload time.
+
+---
+
+General rules (both styles):
+- If you have `package.json` with dependencies, run `npm install` locally before zipping.
 - No file system writes at runtime — workerd V8 isolates have no disk access.
 - State is **in-memory and per-process** — don't rely on it surviving a cold start or a pool eviction.

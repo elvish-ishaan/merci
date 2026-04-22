@@ -1,0 +1,7 @@
+{
+  "name": "hono-ts",
+  "type": "module",
+  "dependencies": {
+    "hono": "^4.7.0"
+  }
+}
