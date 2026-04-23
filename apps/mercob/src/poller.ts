@@ -6,6 +6,8 @@ const LOOK_AHEAD_MS = 60_000
 const CONCURRENCY = 10
 
 export function startPoller(): NodeJS.Timeout {
+  const HEARTBEAT = '/tmp/mercob.healthy'
+
   const tick = async () => {
     const horizon = new Date(Date.now() + LOOK_AHEAD_MS)
     let jobs: Awaited<ReturnType<typeof prisma.scheduledJob.findMany>>
@@ -18,6 +20,8 @@ export function startPoller(): NodeJS.Timeout {
       logger.error({ err }, 'mercob poller: db query failed')
       return
     }
+
+    await Bun.write(HEARTBEAT, Math.floor(Date.now() / 1000).toString())
 
     if (jobs.length === 0) return
     logger.info({ count: jobs.length }, 'mercob poller: dispatching jobs')
