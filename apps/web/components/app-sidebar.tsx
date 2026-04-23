@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutGrid, Settings, LogOut, Rocket, Zap } from 'lucide-react'
+import { LayoutGrid, Settings, LogOut, Rocket, Zap, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Projects', icon: LayoutGrid },
   { href: '/dashboard/mercio', label: 'Mercio', icon: Zap },
+  { href: '/dashboard/mercob', label: 'Mercob', icon: Clock },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ]
 

@@ -116,4 +116,105 @@ export const api = {
 
   deleteMercioFunction: (id: string) =>
     request<{ ok: boolean }>(`/api/mercio/${id}`, { method: 'DELETE' }),
+
+  // ---- Mercob ----
+  getMercobJobs: () =>
+    request<{ jobs: MercobJob[] }>('/api/mercob/jobs'),
+
+  getMercobJob: (id: string) =>
+    request<{ job: MercobJob }>(`/api/mercob/jobs/${id}`),
+
+  createMercobJob: (data: CreateMercobJobInput) =>
+    request<{ job: MercobJob }>('/api/mercob/jobs', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateMercobJob: (id: string, data: Partial<CreateMercobJobInput> & { active?: boolean }) =>
+    request<{ job: MercobJob }>(`/api/mercob/jobs/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  deleteMercobJob: (id: string) =>
+    request<{ ok: boolean }>(`/api/mercob/jobs/${id}`, { method: 'DELETE' }),
+
+  triggerMercobJob: (id: string) =>
+    request<{ runId: string }>(`/api/mercob/jobs/${id}/trigger`, { method: 'POST' }),
+
+  getMercobRuns: (jobId: string, page = 1, limit = 20) =>
+    request<{ runs: MercobRun[]; total: number; page: number; limit: number }>(
+      `/api/mercob/jobs/${jobId}/runs?page=${page}&limit=${limit}`
+    ),
+
+  getMercobRun: (runId: string) =>
+    request<{ run: MercobRun & { logs: MercobRunLog[]; job: { id: string; name: string; functionId: string } } }>(
+      `/api/mercob/runs/${runId}`
+    ),
+}
+
+export type ScheduleKind = 'DAILY' | 'WEEKLY' | 'INTERVAL' | 'ONCE' | 'CRON'
+export type JobRunStatus = 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'TIMEOUT'
+
+export interface MercobJob {
+  id: string
+  name: string
+  functionId: string
+  function?: { id: string; name: string; status: string }
+  active: boolean
+  recurring: boolean
+  scheduleKind: ScheduleKind
+  timeOfDay?: string | null
+  daysOfWeek: number[]
+  intervalSec?: number | null
+  cronExpr?: string | null
+  runAt?: string | null
+  method: string
+  path: string
+  query?: Record<string, string> | null
+  headers?: Record<string, string> | null
+  body?: string | null
+  maxRetries: number
+  timeoutMs: number
+  nextRunAt: string
+  lastRunAt?: string | null
+  createdAt: string
+  updatedAt: string
+  runs?: Pick<MercobRun, 'status' | 'finishedAt'>[]
+}
+
+export interface MercobRun {
+  id: string
+  jobId: string
+  attempt: number
+  status: JobRunStatus
+  scheduledFor: string
+  startedAt?: string | null
+  finishedAt?: string | null
+  durationMs?: number | null
+  httpStatus?: number | null
+  responseBody?: string | null
+  errorMessage?: string | null
+  createdAt: string
+}
+
+export interface MercobRunLog {
+  id: string
+  runId: string
+  line: string
+  stream: string
+  createdAt: string
+}
+
+export interface CreateMercobJobInput {
+  name: string
+  functionId: string
+  recurring?: boolean
+  scheduleKind: ScheduleKind
+  timeOfDay?: string
+  daysOfWeek?: number[]
+  intervalSec?: number
+  cronExpr?: string
+  runAt?: string
+  method?: string
+  path?: string
+  query?: Record<string, string>
+  headers?: Record<string, string>
+  body?: string
+  maxRetries?: number
+  timeoutMs?: number
 }

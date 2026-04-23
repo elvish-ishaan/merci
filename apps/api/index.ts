@@ -9,6 +9,8 @@ import internal from './src/routes/internal'
 import domains from './src/routes/domains'
 import mercio from './src/routes/mercio'
 import mercioInvoke from './src/routes/mercio-invoke'
+import mercob from './src/routes/mercob'
+import mercobRuns from './src/routes/mercob-runs'
 import { subdomainMiddleware } from './src/middleware/subdomain'
 import prisma from './src/lib/prisma'
 import { logger } from './src/lib/logger'
@@ -70,6 +72,8 @@ app.use('/deploy', deploy)
 app.use('/deploy/:projectId/domains', domains)
 app.use('/internal', internal)
 app.use('/api/mercio', mercio)
+app.use('/api/mercob/jobs', mercob)
+app.use('/api/mercob/runs', mercobRuns)
 app.use('/mercio', mercioInvoke)
 app.use('/', github)
 

@@ -15,6 +15,7 @@ model User {
   createdAt         DateTime         @default(now())
   projects          Project[]
   mercioFunctions   MercioFunction[]
+  scheduledJobs     ScheduledJob[]
   githubId          String?          @unique
   githubAccessToken String?
 }
@@ -57,18 +58,85 @@ model EnvVar {
 }
 
 model MercioFunction {
+  id           String         @id @default(uuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  entry        String         @default("index.js")
+  status       MercioStatus   @default(QUEUED)
+  bundleKey    String?
+  errorMessage String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  scheduledJobs ScheduledJob[]
+
+  @@index([userId])
+}
+
+model ScheduledJob {
   id           String       @id @default(uuid())
   userId       String
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  functionId   String
+  function     MercioFunction @relation(fields: [functionId], references: [id], onDelete: Cascade)
   name         String
-  entry        String       @default("index.js")
-  status       MercioStatus @default(QUEUED)
-  bundleKey    String?
-  errorMessage String?
+  active       Boolean      @default(true)
+  recurring    Boolean      @default(true)
+
+  scheduleKind ScheduleKind
+  timeOfDay    String?
+  daysOfWeek   Int[]
+  intervalSec  Int?
+  cronExpr     String?
+  runAt        DateTime?
+
+  method       String       @default("GET")
+  path         String       @default("/")
+  query        Json?
+  headers      Json?
+  body         String?
+
+  maxRetries   Int          @default(0)
+  timeoutMs    Int          @default(30000)
+
+  nextRunAt    DateTime
+  lastRunAt    DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  runs         JobRun[]
 
+  @@index([active, nextRunAt])
   @@index([userId])
+}
+
+model JobRun {
+  id           String       @id @default(uuid())
+  jobId        String
+  job          ScheduledJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  attempt      Int          @default(1)
+  status       JobRunStatus @default(QUEUED)
+  scheduledFor DateTime
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  durationMs   Int?
+  httpStatus   Int?
+  responseBody String?
+  errorMessage String?
+  logs         JobRunLog[]
+  createdAt    DateTime     @default(now())
+
+  @@index([jobId, createdAt])
+}
+
+model JobRunLog {
+  id        BigInt   @id @default(autoincrement())
+  runId     String
+  run       JobRun   @relation(fields: [runId], references: [id], onDelete: Cascade)
+  line      String
+  stream    String   @default("stdout")
+  createdAt DateTime @default(now())
+
+  @@index([runId])
 }
 
 enum MercioStatus {
@@ -91,6 +159,22 @@ enum DomainSslStatus {
   PROVISIONING
   ACTIVE
   FAILED
+}
+
+enum ScheduleKind {
+  DAILY
+  WEEKLY
+  INTERVAL
+  ONCE
+  CRON
+}
+
+enum JobRunStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  TIMEOUT
 }
 
 model CustomDomain {
