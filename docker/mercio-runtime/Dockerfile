@@ -16,9 +16,10 @@ COPY packages/crypto/package.json      ./packages/crypto/package.json
 COPY packages/db/package.json          ./packages/db/package.json
 COPY packages/eslint-config/package.json    ./packages/eslint-config/package.json
 COPY packages/typescript-config/package.json ./packages/typescript-config/package.json
+COPY packages/logger/package.json            ./packages/logger/package.json
 
 # Install all dependencies — bun resolves and downloads the linux workerd binary here
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # Copy source for packages that mercio-runtime depends on
 COPY packages ./packages
