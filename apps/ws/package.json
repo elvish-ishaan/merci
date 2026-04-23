@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@repo/db": "*",
+    "@repo/logger": "*",
     "ioredis": "^5",
     "jose": "^5.10.0"
   },

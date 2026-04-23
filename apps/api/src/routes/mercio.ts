@@ -5,6 +5,7 @@ import { PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aw
 import prisma from '../lib/prisma'
 import { authMiddleware } from '../middleware/auth'
 import { r2, BUCKET } from '../lib/r2'
+import { logger } from '../lib/logger'
 
 const mercio = Router()
 
@@ -71,6 +72,8 @@ mercio.post('/upload', authMiddleware, upload.single('zip'), async (req, res) =>
     entry: fn.entry,
   })
 
+  logger.debug({ functionId: fn.id, userId, entry: fn.entry }, 'mercio build job queued')
+
   res.status(201).json({
     id: fn.id,
     name: fn.name,
@@ -129,6 +132,9 @@ mercio.delete('/:id', authMiddleware, async (req, res) => {
   )
 
   await prisma.mercioFunction.delete({ where: { id: fn.id } })
+
+  logger.debug({ functionId: fn.id, userId }, 'mercio function deleted')
+
   res.json({ ok: true })
 })
 

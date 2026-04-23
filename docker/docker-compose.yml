@@ -1,23 +1,5 @@
 
 services:
-  mercio-runtime:
-    build:
-      context: ..
-      dockerfile: docker/mercio-runtime/Dockerfile
-    restart: unless-stopped
-    env_file:
-      - ../apps/mercio-runtime/.env
-    environment:
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      MERCIO_CACHE_DIR: /var/mercio
-    volumes:
-      - mercio_cache:/var/mercio
-    depends_on:
-      - redis
-    networks:
-      - merci
-
   postgres:
     image: postgres:alpine
     environment:
@@ -43,7 +25,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  mercio_cache:
 
 networks:
   merci:

@@ -1,5 +1,6 @@
 import { Worker } from 'bullmq'
 import { ensure } from './workerdPool'
+import { logger } from './lib/logger'
 
 export interface InvokePayload {
   id: string
@@ -32,13 +33,16 @@ export function createRuntimeWorker() {
   const worker = new Worker<InvokePayload, InvokeResult>(
     'mercio-invocations',
     async (job) => {
-      const { id, method, path, query, headers, body } = job.data
+      const { id, method, path, query, body } = job.data
+      // headers excluded from log — may contain Authorization from the caller
+      logger.debug({ functionId: id, method, path }, 'invoking function')
+
       const { port } = await ensure(id)
       const url = `http://127.0.0.1:${port}${path}${buildQs(query)}`
 
       const res = await fetch(url, {
         method,
-        headers: headers as Record<string, string>,
+        headers: job.data.headers as Record<string, string>,
         body: method !== 'GET' && method !== 'HEAD' ? body ?? undefined : undefined,
       })
 
@@ -61,11 +65,11 @@ export function createRuntimeWorker() {
   )
 
   worker.on('failed', (job, err) => {
-    console.error(`[mercio-runtime] Job ${job?.id} failed:`, err.message)
+    logger.error({ jobId: job?.id, err }, 'invocation job failed')
   })
 
   worker.on('completed', (job) => {
-    console.log(`[mercio-runtime] Job ${job.id} completed`)
+    logger.info({ jobId: job.id }, 'invocation job completed')
   })
 
   return worker

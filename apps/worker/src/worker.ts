@@ -9,6 +9,7 @@ import { buildInDocker, detectBuildDir } from './lib/docker'
 import { assertViteProject } from './lib/validate'
 import { uploadDir } from './lib/r2'
 import { mercioBuildJob, type MercioBuildJobData } from './mercioBuild'
+import { logger } from './lib/logger'
 
 interface DeployJobData {
   projectId: string
@@ -55,10 +56,13 @@ async function processJob(job: Job<DeployJobData>): Promise<void> {
   const { projectId, repoUrl, encryptedEnvVars = [], githubToken } = job.data
   const tempDir = path.join(os.tmpdir(), `mercy-${projectId}`)
 
+  logger.debug({ jobId: job.id, projectId }, 'deployment job picked up')
+
   try {
     await prisma.project.update({ where: { id: projectId }, data: { status: 'CLONING' } })
     await postStatus(projectId, 'CLONING')
-    console.log(`[${projectId}] Cloning ${repoUrl}`)
+    // githubToken is in scope but intentionally excluded from the log object — redact path covers it anyway
+    logger.info({ projectId, repoUrl }, 'cloning repository')
     await cloneRepo(repoUrl, tempDir, githubToken)
 
     assertViteProject(tempDir)
@@ -67,17 +71,20 @@ async function processJob(job: Job<DeployJobData>): Promise<void> {
       key,
       value: decryptValue(encryptedValue),
     }))
+    logger.debug({ projectId, envVarCount: encryptedEnvVars.length }, 'env vars decrypted')
 
     await prisma.project.update({ where: { id: projectId }, data: { status: 'BUILDING' } })
     await postStatus(projectId, 'BUILDING')
-    console.log(`[${projectId}] Building in Docker`)
+    logger.info({ projectId }, 'building in docker')
     await buildInDocker(tempDir, envVars, (line, stream) => {
       postLog(projectId, line, stream)
     })
 
     const buildDir = detectBuildDir(tempDir)
+    logger.debug({ projectId, buildDir }, 'build directory detected')
+
     const prefix = `builds/${projectId}`
-    console.log(`[${projectId}] Uploading build output from ${buildDir}`)
+    logger.info({ projectId, buildDir }, 'uploading build output')
     await uploadDir(buildDir, prefix)
 
     const subdomainRow = await prisma.project.findUnique({
@@ -92,9 +99,9 @@ async function processJob(job: Job<DeployJobData>): Promise<void> {
       data: { status: 'DEPLOYED', bucketPrefix: prefix, deployedUrl },
     })
     await postStatus(projectId, 'DEPLOYED')
-    console.log(`[${projectId}] Deployed successfully`)
+    logger.info({ projectId, deployedUrl }, 'deployed successfully')
   } catch (err) {
-    console.error(`[${projectId}] Failed:`, err)
+    logger.error({ projectId, err }, 'deployment failed')
     await prisma.project.update({ where: { id: projectId }, data: { status: 'FAILED' } })
     await postStatus(projectId, 'FAILED')
     throw err
@@ -115,11 +122,11 @@ export function createWorker(): Worker<DeployJobData> {
   })
 
   worker.on('failed', (job, err) => {
-    console.error(`Job ${job?.id} failed:`, err.message)
+    logger.error({ jobId: job?.id, err }, 'deployment job failed')
   })
 
   worker.on('completed', (job) => {
-    console.log(`Job ${job.id} completed`)
+    logger.info({ jobId: job.id }, 'deployment job completed')
   })
 
   return worker
@@ -132,11 +139,11 @@ export function createMercioWorker(): Worker<MercioBuildJobData> {
   })
 
   worker.on('failed', (job, err) => {
-    console.error(`[mercio] Job ${job?.id} failed:`, err.message)
+    logger.error({ jobId: job?.id, err }, 'mercio build job failed')
   })
 
   worker.on('completed', (job) => {
-    console.log(`[mercio] Job ${job.id} completed`)
+    logger.info({ jobId: job.id }, 'mercio build job completed')
   })
 
   return worker

@@ -1,4 +1,5 @@
 import { handleOpen, handleClose } from './src/handler'
+import { logger } from './src/lib/logger'
 
 if (!process.env['JWT_SECRET']) throw new Error('JWT_SECRET env var is required')
 
@@ -24,4 +25,4 @@ Bun.serve<string>({
   },
 })
 
-console.log(`WS service running on ws://localhost:${port}`)
+logger.info({ port }, 'WS service running')

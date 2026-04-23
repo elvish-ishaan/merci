@@ -1,7 +1,9 @@
-import { Router, Request, Response } from 'express'
+import { Router } from 'express'
+import type { Request, Response } from 'express'
 import { promises as dns } from 'dns'
 import prisma from '../lib/prisma'
 import { authMiddleware } from '../middleware/auth'
+import { logger } from '../lib/logger'
 
 const domains = Router({ mergeParams: true })
 
@@ -58,6 +60,8 @@ domains.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       },
     })
 
+    logger.debug({ projectId, domain }, 'custom domain added')
+
     res.json({
       domain: {
         id: customDomain.id,
@@ -73,7 +77,7 @@ domains.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       },
     })
   } catch (error) {
-    console.error('Error adding custom domain:', error)
+    logger.error({ err: error, projectId, domain }, 'failed to add custom domain')
     res.status(500).json({ error: 'Internal server error' })
   }
 })
@@ -154,6 +158,8 @@ domains.post('/:domainId/verify', authMiddleware, async (req: AuthRequest, res: 
       })
     }
 
+    logger.debug({ projectId, domainId, domain: customDomain.domain }, 'custom domain verified')
+
     res.json({
       domain: {
         id: updated.id,
@@ -164,7 +170,7 @@ domains.post('/:domainId/verify', authMiddleware, async (req: AuthRequest, res: 
       message: 'Domain verified successfully. SSL certificate will be provisioned shortly.',
     })
   } catch (error) {
-    console.error('Error verifying domain:', error)
+    logger.error({ err: error, projectId, domainId }, 'failed to verify custom domain')
     res.status(500).json({ error: 'Internal server error' })
   }
 })
@@ -200,7 +206,7 @@ domains.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
     res.json({ domains: customDomains })
   } catch (error) {
-    console.error('Error fetching domains:', error)
+    logger.error({ err: error, projectId }, 'failed to fetch custom domains')
     res.status(500).json({ error: 'Internal server error' })
   }
 })
@@ -245,9 +251,11 @@ domains.delete('/:domainId', authMiddleware, async (req: AuthRequest, res: Respo
       },
     })
 
+    logger.debug({ projectId, domainId, domain: customDomain.domain }, 'custom domain deleted')
+
     res.json({ message: 'Domain deleted successfully' })
   } catch (error) {
-    console.error('Error deleting domain:', error)
+    logger.error({ err: error, projectId, domainId }, 'failed to delete custom domain')
     res.status(500).json({ error: 'Internal server error' })
   }
 })

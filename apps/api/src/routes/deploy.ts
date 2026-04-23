@@ -4,6 +4,7 @@ import prisma from '../lib/prisma'
 import { authMiddleware } from '../middleware/auth'
 import { encryptValue, decryptValue } from '@repo/crypto'
 import { generateUniqueSubdomain } from '../lib/subdomain'
+import { logger } from '../lib/logger'
 
 const deploy = Router()
 
@@ -93,6 +94,8 @@ deploy.post('/', authMiddleware, async (req, res) => {
   const githubToken = user?.githubAccessToken ? decryptValue(user.githubAccessToken) : undefined
 
   await deployQueue.add('deploy', { projectId: project.id, repoUrl, encryptedEnvVars, githubToken })
+
+  logger.debug({ projectId: project.id, userId, envVarCount: validEnvVars.length }, 'deploy job queued')
 
   res.json({
     projectId: project.id,

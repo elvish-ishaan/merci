@@ -10,6 +10,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.750.0",
     "@repo/db": "*",
+    "@repo/logger": "*",
     "bullmq": "^5",
     "ioredis": "^5",
     "workerd": "^1.20250522.0"

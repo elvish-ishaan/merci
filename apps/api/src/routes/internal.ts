@@ -1,6 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from 'express'
 import prisma from '../lib/prisma'
 import { redisPub } from '../lib/redis'
+import { logger } from '../lib/logger'
 
 const internal = Router()
 
@@ -36,6 +37,8 @@ internal.post('/logs', requireWorkerAuth, async (req: Request, res: Response) =>
     JSON.stringify({ type: 'log', id: log.id, line: log.line, stream: log.stream }),
   )
 
+  logger.debug({ projectId, stream }, 'build log received')
+
   res.status(201).json({ ok: true })
 })
 
@@ -51,6 +54,8 @@ internal.post('/status', requireWorkerAuth, async (req: Request, res: Response) 
     `build:${projectId}`,
     JSON.stringify({ type: 'status', status }),
   )
+
+  logger.debug({ projectId, status }, 'build status update received')
 
   res.json({ ok: true })
 })

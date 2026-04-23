@@ -3,6 +3,7 @@ import prisma from '../lib/prisma'
 import { authMiddleware } from '../middleware/auth'
 import { signToken, verifyToken } from '../lib/jwt'
 import { encryptValue, decryptValue } from '@repo/crypto'
+import { logger } from '../lib/logger'
 
 const github = Router()
 
@@ -27,6 +28,8 @@ github.get('/auth/github', async (req, res) => {
     res.status(401).json({ error: 'Invalid token' })
     return
   }
+
+  logger.debug({ userId }, 'initiating github oauth flow')
 
   // Short-lived state JWT so we can recover userId in the callback
   const state = await signToken({ userId, email: '' })
@@ -77,11 +80,9 @@ github.get('/auth/github/callback', async (req, res) => {
     return
   }
 
-  const accessToken = tokenData.access_token
-
   // Fetch GitHub user ID
   const userRes = await fetch('https://api.github.com/user', {
-    headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': 'mercy-app' },
+    headers: { Authorization: `Bearer ${tokenData.access_token}`, 'User-Agent': 'mercy-app' },
   })
   const ghUser = await userRes.json() as { id: number }
 
@@ -89,9 +90,11 @@ github.get('/auth/github/callback', async (req, res) => {
     where: { id: userId },
     data: {
       githubId: String(ghUser.id),
-      githubAccessToken: encryptValue(accessToken),
+      githubAccessToken: encryptValue(tokenData.access_token),
     },
   })
+
+  logger.debug({ userId, githubUserId: String(ghUser.id) }, 'github account connected')
 
   res.redirect(`${FRONTEND_URL}/dashboard?github=connected`)
 })
@@ -113,11 +116,11 @@ github.get('/github/repos', authMiddleware, async (_req, res) => {
     return
   }
 
-  const token = decryptValue(user.githubAccessToken)
+  const accessToken = decryptValue(user.githubAccessToken)
 
   const ghRes = await fetch(
     'https://api.github.com/user/repos?per_page=100&sort=updated&type=all',
-    { headers: { Authorization: `Bearer ${token}`, 'User-Agent': 'mercy-app' } },
+    { headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': 'mercy-app' } },
   )
 
   if (!ghRes.ok) {

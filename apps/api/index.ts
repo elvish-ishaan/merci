@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import pinoHttp from 'pino-http'
 import auth from './src/routes/auth'
 import deploy from './src/routes/deploy'
 import appRouter from './src/routes/app'
@@ -10,6 +11,7 @@ import mercio from './src/routes/mercio'
 import mercioInvoke from './src/routes/mercio-invoke'
 import { subdomainMiddleware } from './src/middleware/subdomain'
 import prisma from './src/lib/prisma'
+import { logger } from './src/lib/logger'
 
 if (!process.env['WORKER_SECRET']) throw new Error('WORKER_SECRET env var is required')
 
@@ -17,6 +19,10 @@ const app = express()
 
 app.use(cors())
 app.use(express.json())
+app.use(pinoHttp({
+  logger,
+  autoLogging: { ignore: (req) => req.url === '/health' },
+}))
 
 app.use(subdomainMiddleware)
 
@@ -54,7 +60,7 @@ app.get('/internal/domain-check', async (req, res) => {
     })
     res.status(record ? 200 : 403).end()
   } catch (error) {
-    console.error('Error in domain check:', error)
+    logger.error({ err: error, domain }, 'domain check failed')
     res.status(500).end()
   }
 })
@@ -68,4 +74,4 @@ app.use('/mercio', mercioInvoke)
 app.use('/', github)
 
 const port = process.env.PORT ?? 3001
-app.listen(port, () => console.log(`API running on http://localhost:${port}`))
+app.listen(port, () => logger.info({ port }, 'API running'))

@@ -11,6 +11,7 @@
     "@aws-sdk/client-s3": "^3.750.0",
     "@repo/crypto": "*",
     "@repo/db": "*",
+    "@repo/logger": "*",
     "@types/unzipper": "^0.10.11",
     "bullmq": "^5",
     "esbuild": "^0.28.0",

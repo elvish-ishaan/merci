@@ -9,6 +9,7 @@ import unzipper from 'unzipper'
 import * as esbuild from 'esbuild'
 import prisma from '@repo/db'
 import { r2 } from './lib/r2'
+import { logger } from './lib/logger'
 
 const BUCKET = process.env['R2_BUCKET_NAME']!
 
@@ -62,6 +63,8 @@ export async function mercioBuildJob(job: Job<MercioBuildJobData>): Promise<void
   const srcDir = path.join(tmpDir, 'src')
   const outDir = path.join(tmpDir, 'out')
 
+  logger.debug({ jobId: job.id, functionId, entry }, 'mercio build job picked up')
+
   try {
     await prisma.mercioFunction.update({
       where: { id: functionId },
@@ -75,6 +78,8 @@ export async function mercioBuildJob(job: Job<MercioBuildJobData>): Promise<void
     const zipResp = await r2.send(new GetObjectCommand({ Bucket: BUCKET, Key: zipKey }))
     const zipPath = path.join(tmpDir, 'source.zip')
     await pipeline(zipResp.Body as NodeJS.ReadableStream, createWriteStream(zipPath))
+
+    logger.debug({ functionId }, 'zip downloaded from R2')
 
     // 2. Unzip
     await fs.createReadStream(zipPath).pipe(unzipper.Extract({ path: srcDir })).promise()
@@ -102,6 +107,8 @@ export async function mercioBuildJob(job: Job<MercioBuildJobData>): Promise<void
     const shimPath = path.join(tmpDir, '__mercio_shim__.mjs')
     const shimContent = SHIM_CONTENT.replace('__USER_ENTRY__', entryResolved.replace(/\\/g, '/'))
     await fs.writeFile(shimPath, shimContent, 'utf8')
+
+    logger.debug({ functionId }, 'bundling with esbuild')
 
     // 4. Bundle shim + user code into a single ESM worker.mjs
     const workerOut = path.join(outDir, 'worker.mjs')
@@ -155,9 +162,9 @@ export async function mercioBuildJob(job: Job<MercioBuildJobData>): Promise<void
       where: { id: functionId },
       data: { status: 'DEPLOYED', bundleKey },
     })
-    console.log(`[mercio][${functionId}] Deployed successfully`)
+    logger.info({ functionId }, 'mercio function deployed successfully')
   } catch (err: any) {
-    console.error(`[mercio][${functionId}] Build failed:`, err)
+    logger.error({ functionId, err }, 'mercio function build failed')
     await prisma.mercioFunction.update({
       where: { id: functionId },
       data: { status: 'FAILED', errorMessage: err?.message ?? String(err) },

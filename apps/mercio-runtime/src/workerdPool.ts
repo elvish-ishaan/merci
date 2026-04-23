@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { ensureWorkerMjs } from './r2'
+import { logger } from './lib/logger'
 
 const CACHE_DIR = process.env['MERCIO_CACHE_DIR'] ?? '/var/mercio'
 const POOL_MAX = Number(process.env['MERCIO_POOL_MAX'] ?? '20')
@@ -82,28 +83,32 @@ async function spawnWorkerd(functionId: string, workerMjsPath: string): Promise<
   await fs.writeFile(configPath, buildCapnpConfig(workerMjsPath, port), 'utf8')
 
   const bin = getWorkerdBin()
-  console.log(`[mercio-runtime] spawning workerd: ${bin} serve ${configPath} (port ${port})`)
+  logger.info({ functionId, port, bin }, 'spawning workerd')
 
   const proc = Bun.spawn([bin, 'serve', configPath], {
     stdout: 'pipe',
     stderr: 'pipe',
   })
 
-  const pipe = async (stream: ReadableStream<Uint8Array> | null, tag: string) => {
+  const pipeStream = async (stream: ReadableStream<Uint8Array> | null, pipe: string) => {
     if (!stream) return
     const reader = stream.getReader()
     const decoder = new TextDecoder()
     while (true) {
       const { value, done } = await reader.read()
       if (done) break
-      process.stderr.write(`[workerd:${tag}:${functionId}] ${decoder.decode(value)}`)
+      const text = decoder.decode(value)
+      for (const line of text.split('\n')) {
+        const trimmed = line.trim()
+        if (trimmed) logger.debug({ functionId, pipe }, trimmed)
+      }
     }
   }
-  void pipe(proc.stdout as ReadableStream<Uint8Array>, 'out')
-  void pipe(proc.stderr as ReadableStream<Uint8Array>, 'err')
+  void pipeStream(proc.stdout as ReadableStream<Uint8Array>, 'stdout')
+  void pipeStream(proc.stderr as ReadableStream<Uint8Array>, 'stderr')
 
   proc.exited.then((code) => {
-    console.log(`[mercio-runtime] workerd for ${functionId} exited with code ${code}`)
+    logger.info({ functionId, code }, 'workerd exited')
   })
 
   try {
@@ -120,6 +125,7 @@ export async function ensure(functionId: string): Promise<{ port: number }> {
   const existing = pool.get(functionId)
   if (existing) {
     existing.lastUsedAt = Date.now()
+    logger.debug({ functionId }, 'workerd pool cache hit')
     return { port: existing.port }
   }
 
@@ -130,6 +136,7 @@ export async function ensure(functionId: string): Promise<{ port: number }> {
       if (!oldest || entry[1].lastUsedAt < oldest[1].lastUsedAt) oldest = entry
     }
     if (oldest) {
+      logger.debug({ poolSize: pool.size, evictedFunctionId: oldest[0] }, 'LRU eviction triggered')
       oldest[1].proc.kill()
       pool.delete(oldest[0])
     }
@@ -146,6 +153,7 @@ export function evict(functionId: string): void {
   if (entry) {
     entry.proc.kill()
     pool.delete(functionId)
+    logger.info({ functionId }, 'workerd evicted')
   }
 }
 
@@ -154,7 +162,7 @@ setInterval(() => {
   const now = Date.now()
   for (const [id, entry] of pool.entries()) {
     if (now - entry.lastUsedAt > IDLE_TTL_MS) {
-      console.log(`[mercio-runtime] Evicting idle worker for ${id}`)
+      logger.info({ functionId: id }, 'evicting idle workerd')
       entry.proc.kill()
       pool.delete(id)
     }

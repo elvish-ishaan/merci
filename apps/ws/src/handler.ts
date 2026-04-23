@@ -2,6 +2,7 @@ import type { ServerWebSocket } from 'bun'
 import { jwtVerify } from 'jose'
 import prisma from '@repo/db'
 import { redisSub, projectSubscribers } from './redis'
+import { logger } from './lib/logger'
 
 const secret = new TextEncoder().encode(process.env['JWT_SECRET']!)
 
@@ -44,6 +45,7 @@ export async function handleOpen(ws: ServerWebSocket<string>): Promise<void> {
 
   if (clients.size === 1) {
     await redisSub.subscribe(`build:${projectId}`)
+    logger.debug({ projectId }, 'redis channel subscribed')
   }
 
   // Replay historical logs so the client catches up
@@ -51,6 +53,8 @@ export async function handleOpen(ws: ServerWebSocket<string>): Promise<void> {
     where: { projectId },
     orderBy: { id: 'asc' },
   })
+
+  logger.debug({ projectId, userId, count: existingLogs.length }, 'ws client connected, replaying logs')
 
   for (const log of existingLogs) {
     ws.send(
@@ -71,8 +75,12 @@ export function handleClose(ws: ServerWebSocket<string>): void {
   if (!clients) return
 
   clients.delete(ws)
+
+  logger.debug({ projectId }, 'ws client disconnected')
+
   if (clients.size === 0) {
     projectSubscribers.delete(projectId)
     redisSub.unsubscribe(`build:${projectId}`).catch(() => {})
+    logger.debug({ projectId }, 'redis channel unsubscribed')
   }
 }

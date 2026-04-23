@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
 import prisma from '../lib/prisma'
+import { logger } from '../lib/logger'
 
 const BASE_DOMAIN = process.env['BASE_DOMAIN']
 
@@ -34,7 +35,7 @@ export async function subdomainMiddleware(req: Request, res: Response, next: Nex
       ;(req as any).subdomainProjectId = project.id
       return next()
     } catch (error) {
-      console.error('Error resolving subdomain:', error)
+      logger.error({ err: error, subdomain }, 'failed to resolve subdomain')
       res.status(500).json({ error: 'Internal server error' })
       return
     }
@@ -60,14 +61,14 @@ export async function subdomainMiddleware(req: Request, res: Response, next: Nex
             where: { id: customDomain.id },
             data: { sslStatus: 'ACTIVE' },
           })
-          .catch((error) => console.error('Error updating SSL status:', error))
+          .catch((error) => logger.error({ err: error, domainId: customDomain.id }, 'failed to update SSL status'))
       }
 
       ;(req as any).subdomainProjectId = customDomain.project.id
       return next()
     }
   } catch (error) {
-    console.error('Error resolving custom domain:', error)
+    logger.error({ err: error, host }, 'failed to resolve custom domain')
     res.status(500).json({ error: 'Internal server error' })
     return
   }
