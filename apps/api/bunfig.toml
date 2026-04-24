@@ -1,1 +1,5 @@
 target = "bun"
+
+[test]
+preload = ["./tests/helpers/setup.ts"]
+coverageReporter = ["text", "lcov"]
