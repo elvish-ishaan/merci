@@ -53,13 +53,11 @@ export function AppSidebar() {
     : '?'
 
   return (
-    <aside className="w-56 shrink-0 border-r border-neutral-800 flex flex-col h-screen">
-      {/* Logo */}
+    <aside className="w-56 shrink-0 bg-card border-r border-border flex flex-col h-screen">
       <div className="px-4 py-5">
         <span className="font-semibold tracking-tight text-base">mercy</span>
       </div>
 
-      {/* Deploy button */}
       <div className="px-3 pb-4">
         <Button asChild className="w-full justify-start gap-2" size="sm">
           <Link href="/dashboard?deploy=true">
@@ -69,9 +67,8 @@ export function AppSidebar() {
         </Button>
       </div>
 
-      <Separator className="bg-neutral-800" />
+      <Separator />
 
-      {/* Nav links */}
       <nav className="flex-1 px-2 py-3 space-y-0.5">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href
@@ -82,8 +79,8 @@ export function AppSidebar() {
               className={cn(
                 'flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors',
                 active
-                  ? 'bg-neutral-800 text-white'
-                  : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
+                  ? 'bg-primary/10 text-primary font-medium'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
               )}
             >
               <Icon className="w-4 h-4 shrink-0" />
@@ -93,22 +90,21 @@ export function AppSidebar() {
         })}
       </nav>
 
-      <Separator className="bg-neutral-800" />
+      <Separator />
 
-      {/* Profile + sign out */}
       <div className="p-3 space-y-2">
         <div className="flex items-center gap-2.5 px-1">
           <Avatar className="h-7 w-7 shrink-0">
-            <AvatarFallback className="text-xs bg-neutral-700 text-neutral-200">
+            <AvatarFallback className="text-xs bg-muted text-muted-foreground">
               {initials}
             </AvatarFallback>
           </Avatar>
-          <span className="text-xs text-neutral-300 truncate flex-1">{email ?? '—'}</span>
+          <span className="text-xs text-foreground/80 truncate flex-1">{email ?? '—'}</span>
         </div>
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start gap-2 text-neutral-400 hover:text-white px-2"
+          className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground px-2"
           onClick={logout}
         >
           <LogOut className="w-3.5 h-3.5" />

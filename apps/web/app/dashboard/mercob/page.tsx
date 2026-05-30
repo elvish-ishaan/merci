@@ -11,7 +11,7 @@ import { Clock, Play, Trash2, Plus } from 'lucide-react'
 const RUN_STATUS_CLASS: Record<JobRunStatus, string> = {
   SUCCEEDED: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
   RUNNING: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
-  QUEUED: 'bg-neutral-500/15 text-neutral-400 border-neutral-500/20',
+  QUEUED: 'bg-muted/60 text-muted-foreground border-border',
   FAILED: 'bg-red-500/15 text-red-400 border-red-500/20',
   TIMEOUT: 'bg-orange-500/15 text-orange-400 border-orange-500/20',
 }
@@ -89,7 +89,7 @@ export default function MercobPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold">Mercob</h1>
-          <p className="text-sm text-neutral-400 mt-0.5">Schedule serverless functions to run automatically</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Schedule serverless functions to run automatically</p>
         </div>
         <Button asChild size="sm">
           <Link href="/dashboard/mercob/new">
@@ -100,17 +100,17 @@ export default function MercobPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-neutral-500">Loading...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       ) : jobs.length === 0 ? (
-        <div className="border border-neutral-800 rounded-lg p-12 text-center">
-          <Clock className="w-8 h-8 text-neutral-600 mx-auto mb-3" />
-          <p className="text-neutral-400 text-sm">No scheduled jobs yet.</p>
+        <div className="border border-border rounded-lg p-12 text-center">
+          <Clock className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">No scheduled jobs yet.</p>
           <Button asChild size="sm" className="mt-4">
             <Link href="/dashboard/mercob/new">Create your first job</Link>
           </Button>
         </div>
       ) : (
-        <div className="border border-neutral-800 rounded-lg divide-y divide-neutral-800">
+        <div className="border border-border rounded-lg divide-y divide-border">
           {jobs.map((job) => {
             const lastRun = job.runs?.[0]
             const statusClass = lastRun
@@ -123,7 +123,7 @@ export default function MercobPage() {
                   <div className="flex items-center gap-2 mb-1">
                     <Link
                       href={`/dashboard/mercob/${job.id}`}
-                      className="font-medium text-sm hover:text-neutral-300 transition-colors"
+                      className="font-medium text-sm hover:text-muted-foreground transition-colors"
                     >
                       {job.name}
                     </Link>
@@ -133,10 +133,10 @@ export default function MercobPage() {
                       </span>
                     )}
                     {!job.active && (
-                      <span className="text-xs text-neutral-600">paused</span>
+                      <span className="text-xs text-muted-foreground/60">paused</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-neutral-500">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span>{scheduleLabel(job)}</span>
                     <span>·</span>
                     <span>fn: {job.function?.name ?? job.functionId.slice(0, 8)}</span>
@@ -158,7 +158,7 @@ export default function MercobPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-neutral-500 hover:text-white h-7 w-7 p-0"
+                    className="text-muted-foreground hover:text-foreground h-7 w-7 p-0"
                     disabled={triggering === job.id}
                     onClick={() => handleTrigger(job)}
                     title="Run now"
@@ -168,7 +168,7 @@ export default function MercobPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-neutral-500 hover:text-red-400 h-7 w-7 p-0"
+                    className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
                     onClick={() => handleDelete(job)}
                     title="Delete"
                   >

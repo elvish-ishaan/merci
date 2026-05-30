@@ -50,7 +50,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={copy}
-      className="ml-2 text-xs text-neutral-500 hover:text-neutral-200 transition-colors shrink-0"
+      className="ml-2 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
     >
       {copied ? 'Copied!' : 'Copy'}
     </button>
@@ -152,7 +152,7 @@ export default function MercioPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold">Mercio</h1>
-          <p className="text-sm text-neutral-400 mt-0.5">
+          <p className="text-sm text-muted-foreground mt-0.5">
             Deploy and run serverless Node.js functions
           </p>
         </div>
@@ -162,19 +162,19 @@ export default function MercioPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-neutral-500">Loading...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       ) : functions.length === 0 ? (
-        <div className="border border-neutral-800 rounded-lg p-10 text-center">
-          <p className="text-neutral-400 text-sm">No functions yet. Deploy your first one.</p>
+        <div className="border border-border rounded-lg p-10 text-center">
+          <p className="text-muted-foreground text-sm">No functions yet. Deploy your first one.</p>
           <Button size="sm" className="mt-4" onClick={() => setOpen(true)}>
             New Function
           </Button>
         </div>
       ) : (
-        <div className="border border-neutral-800 rounded-lg divide-y divide-neutral-800">
+        <div className="border border-border rounded-lg divide-y divide-border">
           {functions.map((fn) => {
             const url = invokeUrl(fn.id)
-            const statusClass = STATUS_CLASS[fn.status] ?? 'bg-neutral-800 text-neutral-300'
+            const statusClass = STATUS_CLASS[fn.status] ?? 'bg-muted text-muted-foreground border-border'
             return (
               <div key={fn.id} className="p-4 flex items-start gap-4">
                 <div className="flex-1 min-w-0">
@@ -188,17 +188,17 @@ export default function MercioPage() {
                   </div>
 
                   {fn.status === 'DEPLOYED' && (
-                    <div className="flex items-center text-xs text-neutral-400 font-mono truncate">
+                    <div className="flex items-center text-xs text-muted-foreground font-mono truncate">
                       <span className="truncate">{url}</span>
                       <CopyButton text={url} />
                     </div>
                   )}
 
                   {fn.status === 'FAILED' && fn.errorMessage && (
-                    <p className="text-xs text-red-400 mt-1 line-clamp-2">{fn.errorMessage}</p>
+                    <p className="text-xs text-destructive mt-1 line-clamp-2">{fn.errorMessage}</p>
                   )}
 
-                  <p className="text-xs text-neutral-600 mt-1">
+                  <p className="text-xs text-muted-foreground/60 mt-1">
                     entry: {fn.entry}
                     {fn.buildCommand ? ` · build: ${fn.buildCommand}` : ''}
                   </p>
@@ -207,7 +207,7 @@ export default function MercioPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-neutral-500 hover:text-red-400 shrink-0"
+                  className="text-muted-foreground hover:text-destructive shrink-0"
                   onClick={() => handleDelete(fn.id)}
                 >
                   Delete
@@ -219,12 +219,12 @@ export default function MercioPage() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-md">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>New Mercio Function</DialogTitle>
-            <DialogDescription className="text-neutral-400">
+            <DialogDescription>
               Upload a zip containing your Node.js handler. Entry must export{' '}
-              <code className="text-xs bg-neutral-800 px-1 rounded">
+              <code className="text-xs bg-muted px-1 rounded">
                 module.exports = async (req) =&gt; (&#123; status, headers, body &#125;)
               </code>
             </DialogDescription>
@@ -238,7 +238,6 @@ export default function MercioPage() {
                 placeholder="my-function"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="bg-neutral-800 border-neutral-700"
                 required
               />
             </div>
@@ -251,25 +250,22 @@ export default function MercioPage() {
                 type="file"
                 accept=".zip,application/zip"
                 onChange={handleFileChange}
-                className="block w-full text-sm text-neutral-400
-                  file:mr-4 file:py-1.5 file:px-3
-                  file:rounded file:border-0
-                  file:text-sm file:bg-neutral-700 file:text-white
-                  hover:file:bg-neutral-600 cursor-pointer"
+                className="block w-full text-sm text-muted-foreground file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:bg-muted file:text-foreground hover:file:bg-muted/80 cursor-pointer"
               />
               {zipFile && (
-                <p className="text-xs text-neutral-500">{zipFile.name} ({(zipFile.size / 1024).toFixed(1)} KB)</p>
+                <p className="text-xs text-muted-foreground">{zipFile.name} ({(zipFile.size / 1024).toFixed(1)} KB)</p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="fn-build">Build command <span className="text-neutral-500">(optional)</span></Label>
+              <Label htmlFor="fn-build">
+                Build command <span className="text-muted-foreground font-normal">(optional)</span>
+              </Label>
               <Input
                 id="fn-build"
                 placeholder="npm install"
                 value={buildCommand}
                 onChange={(e) => setBuildCommand(e.target.value)}
-                className="bg-neutral-800 border-neutral-700"
               />
             </div>
 
@@ -280,11 +276,14 @@ export default function MercioPage() {
                 placeholder="index.js"
                 value={entry}
                 onChange={(e) => setEntry(e.target.value)}
-                className="bg-neutral-800 border-neutral-700"
               />
             </div>
 
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && (
+              <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+                {error}
+              </p>
+            )}
 
             <div className="flex gap-2 pt-1">
               <Button type="submit" disabled={submitting} className="flex-1">
@@ -294,7 +293,7 @@ export default function MercioPage() {
                 type="button"
                 variant="ghost"
                 onClick={() => setOpen(false)}
-                className="text-neutral-400"
+                className="text-muted-foreground"
               >
                 Cancel
               </Button>

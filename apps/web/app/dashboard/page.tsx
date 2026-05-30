@@ -77,13 +77,13 @@ function GithubImportTab({
   )
 
   if (connected === null) {
-    return <p className="text-neutral-500 text-sm py-4 text-center">Checking GitHub connection…</p>
+    return <p className="text-muted-foreground text-sm py-4 text-center">Checking GitHub connection…</p>
   }
 
   if (!connected) {
     return (
       <div className="py-6 flex flex-col items-center gap-3">
-        <p className="text-neutral-400 text-sm text-center">
+        <p className="text-muted-foreground text-sm text-center">
           Connect your GitHub account to browse and import your repositories.
         </p>
         <Button onClick={() => api.connectGithub()} className="gap-2">
@@ -103,12 +103,11 @@ function GithubImportTab({
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search repositories…"
-        className="bg-neutral-900 border-neutral-800 focus:border-neutral-600 placeholder:text-neutral-600"
       />
       {loadingRepos ? (
-        <p className="text-neutral-500 text-sm text-center py-4">Loading repositories…</p>
+        <p className="text-muted-foreground text-sm text-center py-4">Loading repositories…</p>
       ) : filtered.length === 0 ? (
-        <p className="text-neutral-500 text-sm text-center py-4">No repositories found.</p>
+        <p className="text-muted-foreground text-sm text-center py-4">No repositories found.</p>
       ) : (
         <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
           {filtered.map((repo) => (
@@ -116,21 +115,21 @@ function GithubImportTab({
               key={repo.id}
               type="button"
               onClick={() => onSelect(`https://github.com/${repo.fullName}`, repo.fullName.split('/')[1] ?? repo.fullName)}
-              className="w-full text-left px-3 py-2.5 rounded-lg border border-neutral-800 hover:border-neutral-600 hover:bg-neutral-900/60 transition-colors group"
+              className="w-full text-left px-3 py-2.5 rounded-lg border border-border hover:border-ring/50 hover:bg-muted/60 transition-colors group"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-neutral-200 group-hover:text-white truncate">
+                <span className="text-sm font-medium text-foreground/80 group-hover:text-foreground truncate">
                   {repo.fullName}
                 </span>
                 <Badge
                   variant="outline"
-                  className={`text-xs shrink-0 ${repo.private ? 'border-neutral-700 text-neutral-500' : 'border-neutral-700 text-neutral-500'}`}
+                  className="text-xs shrink-0 text-muted-foreground"
                 >
                   {repo.private ? 'Private' : 'Public'}
                 </Badge>
               </div>
               {repo.description && (
-                <p className="text-xs text-neutral-500 mt-0.5 truncate">{repo.description}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">{repo.description}</p>
               )}
             </button>
           ))}
@@ -218,15 +217,15 @@ function DeployDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className={`${step === 2 ? 'sm:max-w-lg' : 'sm:max-w-md'} bg-neutral-950 border-neutral-800`}>
+      <DialogContent className={step === 2 ? 'sm:max-w-lg' : 'sm:max-w-md'}>
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>New deployment</DialogTitle>
             {!deployResult && (
-              <span className="text-xs text-neutral-500">Step {step} of 2</span>
+              <span className="text-xs text-muted-foreground">Step {step} of 2</span>
             )}
           </div>
-          <DialogDescription className="text-neutral-400">
+          <DialogDescription>
             {step === 1
               ? 'Import a Vite-React project from GitHub to deploy.'
               : 'Add environment variables for your build (optional).'}
@@ -236,9 +235,9 @@ function DeployDialog({
         {deployResult ? (
           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-3 text-sm space-y-1">
             <p className="text-emerald-400 font-medium">Deployed successfully</p>
-            <p className="text-neutral-400">
+            <p className="text-muted-foreground">
               Project ID:{' '}
-              <code className="text-neutral-200 font-mono text-xs">{deployResult.projectId}</code>
+              <code className="text-foreground/80 font-mono text-xs">{deployResult.projectId}</code>
             </p>
             <Button size="sm" className="mt-2" onClick={onClose}>
               Close
@@ -246,15 +245,14 @@ function DeployDialog({
           </div>
         ) : step === 1 ? (
           <div className="space-y-4">
-            {/* Tab switcher */}
-            <div className="flex rounded-lg border border-neutral-800 p-1 gap-1">
+            <div className="flex rounded-lg border border-border p-1 gap-1">
               <button
                 type="button"
                 onClick={() => setImportTab('paste')}
                 className={`flex-1 text-xs py-1.5 rounded-md transition-colors ${
                   importTab === 'paste'
-                    ? 'bg-neutral-800 text-white'
-                    : 'text-neutral-500 hover:text-neutral-300'
+                    ? 'bg-muted text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 Paste URL
@@ -264,8 +262,8 @@ function DeployDialog({
                 onClick={() => setImportTab('github')}
                 className={`flex-1 text-xs py-1.5 rounded-md transition-colors ${
                   importTab === 'github'
-                    ? 'bg-neutral-800 text-white'
-                    : 'text-neutral-500 hover:text-neutral-300'
+                    ? 'bg-muted text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 Import from GitHub
@@ -283,13 +281,12 @@ function DeployDialog({
                     onChange={(e) => setRepoUrl(e.target.value)}
                     required
                     placeholder="https://github.com/user/repo"
-                    className="bg-neutral-900 border-neutral-800 focus:border-neutral-600 placeholder:text-neutral-600"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="project-name">
                     Project name{' '}
-                    <span className="text-neutral-500 font-normal">(optional)</span>
+                    <span className="text-muted-foreground font-normal">(optional)</span>
                   </Label>
                   <Input
                     id="project-name"
@@ -297,7 +294,6 @@ function DeployDialog({
                     value={projectName}
                     onChange={(e) => setProjectName(e.target.value)}
                     placeholder="my-app"
-                    className="bg-neutral-900 border-neutral-800 focus:border-neutral-600 placeholder:text-neutral-600"
                   />
                 </div>
                 <div className="flex justify-end gap-2">
@@ -327,14 +323,14 @@ function DeployDialog({
                   type="button"
                   onClick={addRow}
                   disabled={envRows.length >= 50}
-                  className="text-xs text-neutral-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   + Add variable
                 </button>
               </div>
-              <p className="text-xs text-neutral-500">
-                Prefix with <code className="text-neutral-400">VITE_</code> to expose to your app (e.g.{' '}
-                <code className="text-neutral-400">VITE_API_URL</code>).
+              <p className="text-xs text-muted-foreground">
+                Prefix with <code className="text-foreground/70">VITE_</code> to expose to your app (e.g.{' '}
+                <code className="text-foreground/70">VITE_API_URL</code>).
               </p>
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                 {envRows.map((row, i) => (
@@ -344,20 +340,20 @@ function DeployDialog({
                       value={row.key}
                       onChange={(e) => updateRow(i, 'key', e.target.value)}
                       placeholder="KEY"
-                      className="bg-neutral-900 border-neutral-800 focus:border-neutral-600 placeholder:text-neutral-600 font-mono text-xs flex-1"
+                      className="font-mono text-xs flex-1"
                     />
                     <Input
                       type="text"
                       value={row.value}
                       onChange={(e) => updateRow(i, 'value', e.target.value)}
                       placeholder="value"
-                      className="bg-neutral-900 border-neutral-800 focus:border-neutral-600 placeholder:text-neutral-600 text-xs flex-1"
+                      className="text-xs flex-1"
                     />
                     <button
                       type="button"
                       onClick={() => removeRow(i)}
                       disabled={envRows.length === 1}
-                      className="text-neutral-600 hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-lg leading-none pb-0.5"
+                      className="text-muted-foreground/60 hover:text-destructive transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-lg leading-none pb-0.5"
                       aria-label="Remove variable"
                     >
                       ×
@@ -368,7 +364,7 @@ function DeployDialog({
             </div>
 
             {deployError && (
-              <p className="text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
+              <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
                 {deployError}
               </p>
             )}
@@ -383,7 +379,7 @@ function DeployDialog({
                 </Button>
                 <Button type="submit" disabled={deploying} className="gap-2">
                   {deploying && (
-                    <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
                   )}
                   {deploying ? 'Deploying…' : 'Deploy'}
                 </Button>
@@ -453,14 +449,14 @@ function DashboardContent() {
       <h1 className="text-xl font-semibold mb-6">Projects</h1>
 
       {loadingProjects ? (
-        <p className="text-neutral-500 text-sm">Loading…</p>
+        <p className="text-muted-foreground text-sm">Loading…</p>
       ) : projects.length === 0 ? (
-        <div className="border border-dashed border-neutral-800 rounded-xl px-6 py-12 text-center">
-          <p className="text-neutral-500 text-sm">
+        <div className="border border-dashed border-border rounded-xl px-6 py-12 text-center">
+          <p className="text-muted-foreground text-sm">
             No deployments yet.{' '}
             <button
               onClick={() => router.push('/dashboard?deploy=true')}
-              className="text-neutral-300 hover:text-white underline underline-offset-2 transition-colors"
+              className="text-foreground/80 hover:text-foreground underline underline-offset-2 transition-colors"
             >
               Deploy your first project
             </button>
@@ -468,15 +464,15 @@ function DashboardContent() {
           </p>
         </div>
       ) : (
-        <div className="border border-neutral-800 rounded-xl overflow-hidden">
+        <div className="border border-border rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-800 bg-neutral-900/50">
-                <th className="text-left px-4 py-3 text-neutral-400 font-medium">Name</th>
-                <th className="text-left px-4 py-3 text-neutral-400 font-medium">Repo</th>
-                <th className="text-left px-4 py-3 text-neutral-400 font-medium">Status</th>
-                <th className="text-left px-4 py-3 text-neutral-400 font-medium">Deployed</th>
-                <th className="text-left px-4 py-3 text-neutral-400 font-medium">URL</th>
+              <tr className="border-b border-border bg-muted/30">
+                <th className="text-left px-4 py-3 text-muted-foreground font-medium">Name</th>
+                <th className="text-left px-4 py-3 text-muted-foreground font-medium">Repo</th>
+                <th className="text-left px-4 py-3 text-muted-foreground font-medium">Status</th>
+                <th className="text-left px-4 py-3 text-muted-foreground font-medium">Deployed</th>
+                <th className="text-left px-4 py-3 text-muted-foreground font-medium">URL</th>
               </tr>
             </thead>
             <tbody>
@@ -484,7 +480,7 @@ function DashboardContent() {
                 <tr
                   key={p.id}
                   onClick={() => setSelectedProject(p)}
-                  className={`${i !== projects.length - 1 ? 'border-b border-neutral-800/60' : ''} hover:bg-neutral-900/40 transition-colors cursor-pointer`}
+                  className={`${i !== projects.length - 1 ? 'border-b border-border/60' : ''} hover:bg-muted/30 transition-colors cursor-pointer`}
                 >
                   <td className="px-4 py-3 font-medium">{p.projectName}</td>
                   <td className="px-4 py-3">
@@ -492,7 +488,7 @@ function DashboardContent() {
                       href={p.repoUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-neutral-400 hover:text-white transition-colors truncate max-w-48 inline-block"
+                      className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-48 inline-block"
                     >
                       {p.repoUrl.replace('https://github.com/', '')}
                     </a>
@@ -500,12 +496,12 @@ function DashboardContent() {
                   <td className="px-4 py-3">
                     <Badge
                       variant="outline"
-                      className={`text-xs ${STATUS_VARIANT[p.status] ?? 'bg-neutral-700 text-neutral-300'}`}
+                      className={`text-xs ${STATUS_VARIANT[p.status] ?? 'bg-muted text-muted-foreground border-border'}`}
                     >
                       {p.status}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-neutral-500 text-xs">
+                  <td className="px-4 py-3 text-muted-foreground text-xs">
                     {new Date(p.createdAt).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
@@ -519,12 +515,12 @@ function DashboardContent() {
                         href={p.deployedUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-400 hover:text-blue-300 transition-colors text-xs font-mono underline underline-offset-2"
+                        className="text-foreground/80 hover:text-foreground transition-colors text-xs font-mono underline underline-offset-2"
                       >
                         Open app
                       </a>
                     ) : (
-                      <span className="text-neutral-600 text-xs">—</span>
+                      <span className="text-muted-foreground/50 text-xs">—</span>
                     )}
                   </td>
                 </tr>

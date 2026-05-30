@@ -62,18 +62,18 @@ export function BuildLogsPanel({ projectId, projectName, onClose, onStatusChange
   }, [lines])
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-800 bg-neutral-950 shadow-2xl flex flex-col" style={{ height: '40vh' }}>
-      <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-800 shrink-0">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background shadow-2xl flex flex-col" style={{ height: '40vh' }}>
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-neutral-400 font-mono">Build logs — {projectName}</span>
+          <span className="text-xs text-muted-foreground font-mono">Build logs — {projectName}</span>
           <span
-            className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-neutral-600'}`}
+            className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`}
             title={connected ? 'Connected' : 'Disconnected'}
           />
         </div>
         <button
           onClick={onClose}
-          className="text-neutral-500 hover:text-white transition-colors text-lg leading-none"
+          className="text-muted-foreground hover:text-foreground transition-colors text-lg leading-none"
           aria-label="Close logs"
         >
           ×
@@ -81,12 +81,12 @@ export function BuildLogsPanel({ projectId, projectName, onClose, onStatusChange
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 font-mono text-xs leading-5">
-        {error && <p className="text-red-400 mb-2">{error}</p>}
+        {error && <p className="text-destructive mb-2">{error}</p>}
         {lines.length === 0 && !error && (
-          <p className="text-neutral-600">Waiting for build output…</p>
+          <p className="text-muted-foreground/50">Waiting for build output…</p>
         )}
         {lines.map((l) => (
-          <div key={l.id} className={l.stream === 'stderr' ? 'text-red-400' : 'text-neutral-300'}>
+          <div key={l.id} className={l.stream === 'stderr' ? 'text-destructive' : 'text-foreground/80'}>
             {l.line}
           </div>
         ))}

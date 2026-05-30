@@ -118,20 +118,8 @@ export function Navbar() {
             aria-label="View on GitHub"
             className="inline-flex h-9 w-9 items-center justify-center rounded text-brand-fg-muted transition-colors hover:text-brand-fg-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent"
           >
-            <GithubIcon />
+            <GithubIcon className=" size-7" />
           </a>
-          <Link
-            href="/login"
-            className="px-3 py-2 text-sm text-brand-fg-muted transition-colors hover:text-brand-fg-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent"
-          >
-            Login
-          </Link>
-          <Link
-            href="/register"
-            className="px-3 py-2 text-sm text-brand-fg-muted transition-colors hover:text-brand-fg-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent"
-          >
-            Sign up
-          </Link>
           <CtaButton href="/register" variant="brand" className="ml-2">
             Get started
           </CtaButton>

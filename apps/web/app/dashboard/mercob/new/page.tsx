@@ -30,13 +30,11 @@ export default function NewMercobJobPage() {
   const [error, setError] = useState<string | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
-  // Basic fields
   const [name, setName] = useState('')
   const [functionId, setFunctionId] = useState('')
   const [recurring, setRecurring] = useState(true)
   const [scheduleKind, setScheduleKind] = useState<ScheduleKind>('DAILY')
 
-  // Schedule specifics
   const [timeOfDay, setTimeOfDay] = useState('09:00')
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([1])
   const [intervalValue, setIntervalValue] = useState(60)
@@ -44,7 +42,6 @@ export default function NewMercobJobPage() {
   const [cronExpr, setCronExpr] = useState('0 9 * * *')
   const [runAt, setRunAt] = useState('')
 
-  // Advanced
   const [method, setMethod] = useState('GET')
   const [path, setPath] = useState('/')
   const [body, setBody] = useState('')
@@ -106,11 +103,10 @@ export default function NewMercobJobPage() {
     <div className="p-6 max-w-lg mx-auto">
       <div className="mb-6">
         <h1 className="text-xl font-semibold">New Scheduled Job</h1>
-        <p className="text-sm text-neutral-400 mt-0.5">Configure a function to run on a schedule</p>
+        <p className="text-sm text-muted-foreground mt-0.5">Configure a function to run on a schedule</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Name */}
         <div className="space-y-1.5">
           <Label htmlFor="job-name">Job name</Label>
           <Input
@@ -118,19 +114,17 @@ export default function NewMercobJobPage() {
             placeholder="daily-sync"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="bg-neutral-800 border-neutral-700"
             required
           />
         </div>
 
-        {/* Function picker */}
         <div className="space-y-1.5">
           <Label>Function</Label>
           <Select value={functionId} onValueChange={setFunctionId}>
-            <SelectTrigger className="bg-neutral-800 border-neutral-700">
+            <SelectTrigger>
               <SelectValue placeholder="Select a function…" />
             </SelectTrigger>
-            <SelectContent className="bg-neutral-800 border-neutral-700">
+            <SelectContent>
               {functions.length === 0 && (
                 <SelectItem value="__empty__" disabled>No functions found</SelectItem>
               )}
@@ -149,7 +143,7 @@ export default function NewMercobJobPage() {
                     <SelectLabel>Not ready</SelectLabel>
                     {functions.filter((f) => f.status !== 'DEPLOYED').map((f) => (
                       <SelectItem key={f.id} value={f.id} disabled>
-                        {f.name} <span className="text-neutral-500 ml-1">({f.status})</span>
+                        {f.name} <span className="text-muted-foreground ml-1">({f.status})</span>
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -159,14 +153,13 @@ export default function NewMercobJobPage() {
           </Select>
         </div>
 
-        {/* Schedule kind */}
         <div className="space-y-1.5">
           <Label>Schedule</Label>
           <Select value={scheduleKind} onValueChange={(v) => setScheduleKind(v as ScheduleKind)}>
-            <SelectTrigger className="bg-neutral-800 border-neutral-700">
+            <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-neutral-800 border-neutral-700">
+            <SelectContent>
               <SelectItem value="DAILY">Every day</SelectItem>
               <SelectItem value="WEEKLY">Specific days of week</SelectItem>
               <SelectItem value="INTERVAL">Every N minutes / hours</SelectItem>
@@ -176,7 +169,6 @@ export default function NewMercobJobPage() {
           </Select>
         </div>
 
-        {/* Schedule details */}
         {(scheduleKind === 'DAILY' || scheduleKind === 'WEEKLY') && (
           <div className="space-y-1.5">
             <Label htmlFor="time-of-day">Time (UTC)</Label>
@@ -185,7 +177,7 @@ export default function NewMercobJobPage() {
               type="time"
               value={timeOfDay}
               onChange={(e) => setTimeOfDay(e.target.value)}
-              className="bg-neutral-800 border-neutral-700 w-36"
+              className="w-36"
             />
           </div>
         )}
@@ -201,8 +193,8 @@ export default function NewMercobJobPage() {
                   onClick={() => toggleDay(i)}
                   className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
                     daysOfWeek.includes(i)
-                      ? 'bg-white text-black border-white'
-                      : 'border-neutral-700 text-neutral-400 hover:border-neutral-500'
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'border-border text-muted-foreground hover:border-ring/50'
                   }`}
                 >
                   {day}
@@ -221,13 +213,13 @@ export default function NewMercobJobPage() {
                 min={1}
                 value={intervalValue}
                 onChange={(e) => setIntervalValue(Number(e.target.value))}
-                className="bg-neutral-800 border-neutral-700 w-24"
+                className="w-24"
               />
               <Select value={intervalUnit} onValueChange={(v) => setIntervalUnit(v as any)}>
-                <SelectTrigger className="bg-neutral-800 border-neutral-700 w-32">
+                <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-neutral-800 border-neutral-700">
+                <SelectContent>
                   <SelectItem value="minutes">minutes</SelectItem>
                   <SelectItem value="hours">hours</SelectItem>
                 </SelectContent>
@@ -244,9 +236,9 @@ export default function NewMercobJobPage() {
               placeholder="0 9 * * *"
               value={cronExpr}
               onChange={(e) => setCronExpr(e.target.value)}
-              className="bg-neutral-800 border-neutral-700 font-mono text-sm"
+              className="font-mono text-sm"
             />
-            <p className="text-xs text-neutral-500">min hour day month weekday</p>
+            <p className="text-xs text-muted-foreground">min hour day month weekday</p>
           </div>
         )}
 
@@ -258,17 +250,15 @@ export default function NewMercobJobPage() {
               type="datetime-local"
               value={runAt}
               onChange={(e) => setRunAt(e.target.value)}
-              className="bg-neutral-800 border-neutral-700"
             />
           </div>
         )}
 
-        {/* Recurring toggle (hidden for ONCE) */}
         {scheduleKind !== 'ONCE' && (
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">Recurring</p>
-              <p className="text-xs text-neutral-500">Keep repeating after each run</p>
+              <p className="text-xs text-muted-foreground">Keep repeating after each run</p>
             </div>
             <Switch
               checked={recurring}
@@ -278,26 +268,25 @@ export default function NewMercobJobPage() {
           </div>
         )}
 
-        {/* Advanced section */}
         <button
           type="button"
           onClick={() => setShowAdvanced((v) => !v)}
-          className="flex items-center gap-1.5 text-sm text-neutral-400 hover:text-white transition-colors"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           Advanced options
         </button>
 
         {showAdvanced && (
-          <div className="space-y-4 border border-neutral-800 rounded-lg p-4">
+          <div className="space-y-4 border border-border rounded-lg p-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="adv-method">HTTP method</Label>
                 <Select value={method} onValueChange={setMethod}>
-                  <SelectTrigger className="bg-neutral-800 border-neutral-700">
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-neutral-800 border-neutral-700">
+                  <SelectContent>
                     {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => (
                       <SelectItem key={m} value={m}>{m}</SelectItem>
                     ))}
@@ -310,21 +299,23 @@ export default function NewMercobJobPage() {
                   id="adv-path"
                   value={path}
                   onChange={(e) => setPath(e.target.value)}
-                  className="bg-neutral-800 border-neutral-700 font-mono text-sm"
+                  className="font-mono text-sm"
                   placeholder="/"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="adv-body">Request body <span className="text-neutral-500">(optional)</span></Label>
+              <Label htmlFor="adv-body">
+                Request body <span className="text-muted-foreground font-normal">(optional)</span>
+              </Label>
               <textarea
                 id="adv-body"
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={3}
                 placeholder='{"key": "value"}'
-                className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-3 py-2 text-sm font-mono text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-500 resize-none"
+                className="w-full bg-input/30 border border-input rounded-md px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none"
               />
             </div>
 
@@ -338,7 +329,6 @@ export default function NewMercobJobPage() {
                   max={10}
                   value={maxRetries}
                   onChange={(e) => setMaxRetries(Number(e.target.value))}
-                  className="bg-neutral-800 border-neutral-700"
                 />
               </div>
               <div className="space-y-1.5">
@@ -350,14 +340,17 @@ export default function NewMercobJobPage() {
                   step={1000}
                   value={timeoutMs}
                   onChange={(e) => setTimeoutMs(Number(e.target.value))}
-                  className="bg-neutral-800 border-neutral-700"
                 />
               </div>
             </div>
           </div>
         )}
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && (
+          <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
 
         <div className="flex gap-2 pt-1">
           <Button type="submit" disabled={submitting} className="flex-1">
@@ -367,7 +360,7 @@ export default function NewMercobJobPage() {
             type="button"
             variant="ghost"
             onClick={() => router.push('/dashboard/mercob')}
-            className="text-neutral-400"
+            className="text-muted-foreground"
           >
             Cancel
           </Button>

@@ -10,7 +10,7 @@ import { ArrowLeft, Play, Trash2, ChevronDown, ChevronRight } from 'lucide-react
 const RUN_STATUS_CLASS: Record<JobRunStatus, string> = {
   SUCCEEDED: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
   RUNNING: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
-  QUEUED: 'bg-neutral-500/15 text-neutral-400 border-neutral-500/20',
+  QUEUED: 'bg-muted/60 text-muted-foreground border-border',
   FAILED: 'bg-red-500/15 text-red-400 border-red-500/20',
   TIMEOUT: 'bg-orange-500/15 text-orange-400 border-orange-500/20',
 }
@@ -55,56 +55,56 @@ function RunRow({ run }: { run: MercobRun }) {
   const statusClass = RUN_STATUS_CLASS[run.status as JobRunStatus] ?? ''
 
   return (
-    <div className="border-b border-neutral-800 last:border-0">
+    <div className="border-b border-border last:border-0">
       <button
         onClick={expand}
-        className="w-full flex items-center gap-3 p-3 text-left hover:bg-neutral-800/40 transition-colors"
+        className="w-full flex items-center gap-3 p-3 text-left hover:bg-muted/40 transition-colors"
       >
-        <span className="text-neutral-600 w-4 shrink-0">
+        <span className="text-muted-foreground/60 w-4 shrink-0">
           {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
         </span>
         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 ${statusClass}`}>
           {run.status}
         </span>
-        <span className="text-xs text-neutral-400 flex-1 text-left">
+        <span className="text-xs text-muted-foreground flex-1 text-left">
           {new Date(run.scheduledFor).toLocaleString()}
         </span>
         {run.httpStatus && (
-          <span className="text-xs text-neutral-500 shrink-0">HTTP {run.httpStatus}</span>
+          <span className="text-xs text-muted-foreground shrink-0">HTTP {run.httpStatus}</span>
         )}
         {run.durationMs && (
-          <span className="text-xs text-neutral-600 shrink-0">{run.durationMs}ms</span>
+          <span className="text-xs text-muted-foreground/60 shrink-0">{run.durationMs}ms</span>
         )}
-        <span className="text-xs text-neutral-700 shrink-0">attempt {run.attempt}</span>
+        <span className="text-xs text-muted-foreground/40 shrink-0">attempt {run.attempt}</span>
       </button>
 
       {expanded && (
         <div className="px-4 pb-4 pt-1 space-y-3">
           {loadingDetail ? (
-            <p className="text-xs text-neutral-500">Loading…</p>
+            <p className="text-xs text-muted-foreground">Loading…</p>
           ) : detail ? (
             <>
               {detail.errorMessage && (
-                <div className="rounded bg-red-500/10 border border-red-500/20 p-3">
-                  <p className="text-xs text-red-400 font-mono whitespace-pre-wrap">{detail.errorMessage}</p>
+                <div className="rounded bg-destructive/10 border border-destructive/20 p-3">
+                  <p className="text-xs text-destructive font-mono whitespace-pre-wrap">{detail.errorMessage}</p>
                 </div>
               )}
               {detail.responseBody && (
                 <div>
-                  <p className="text-xs text-neutral-500 mb-1">Response body</p>
-                  <pre className="text-xs bg-neutral-900 border border-neutral-800 rounded p-3 overflow-x-auto text-neutral-300 whitespace-pre-wrap break-all">
+                  <p className="text-xs text-muted-foreground mb-1">Response body</p>
+                  <pre className="text-xs bg-muted/30 border border-border rounded p-3 overflow-x-auto text-foreground/80 whitespace-pre-wrap break-all">
                     {detail.responseBody}
                   </pre>
                 </div>
               )}
               {detail.logs && detail.logs.length > 0 && (
                 <div>
-                  <p className="text-xs text-neutral-500 mb-1">Logs</p>
-                  <div className="bg-neutral-950 border border-neutral-800 rounded p-3 space-y-0.5 max-h-48 overflow-y-auto">
+                  <p className="text-xs text-muted-foreground mb-1">Logs</p>
+                  <div className="bg-background border border-border rounded p-3 space-y-0.5 max-h-48 overflow-y-auto">
                     {detail.logs.map((log: any) => (
                       <p
                         key={log.id}
-                        className={`text-xs font-mono ${log.stream === 'stderr' ? 'text-red-400' : 'text-neutral-400'}`}
+                        className={`text-xs font-mono ${log.stream === 'stderr' ? 'text-destructive' : 'text-foreground/70'}`}
                       >
                         {log.line}
                       </p>
@@ -114,7 +114,7 @@ function RunRow({ run }: { run: MercobRun }) {
               )}
             </>
           ) : (
-            <p className="text-xs text-neutral-500">No details available</p>
+            <p className="text-xs text-muted-foreground">No details available</p>
           )}
         </div>
       )}
@@ -192,19 +192,18 @@ export default function MercobJobPage() {
     await fetchRuns(p)
   }
 
-  if (loading) return <div className="p-6 text-sm text-neutral-500">Loading…</div>
+  if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>
   if (!job) return null
 
   const totalPages = Math.ceil(total / 20)
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      {/* Header */}
       <div className="flex items-start gap-4 mb-6">
         <Button
           variant="ghost"
           size="sm"
-          className="text-neutral-500 hover:text-white mt-0.5 p-1 h-auto"
+          className="text-muted-foreground hover:text-foreground mt-0.5 p-1 h-auto"
           onClick={() => router.push('/dashboard/mercob')}
         >
           <ArrowLeft className="w-4 h-4" />
@@ -212,11 +211,11 @@ export default function MercobJobPage() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-semibold">{job.name}</h1>
-            <span className={`text-xs px-2 py-0.5 rounded-full border ${job.active ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' : 'bg-neutral-800 text-neutral-500 border-neutral-700'}`}>
+            <span className={`text-xs px-2 py-0.5 rounded-full border ${job.active ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' : 'bg-muted text-muted-foreground border-border'}`}>
               {job.active ? 'active' : 'paused'}
             </span>
           </div>
-          <div className="text-sm text-neutral-400 mt-1 space-x-3">
+          <div className="text-sm text-muted-foreground mt-1 space-x-3">
             <span>{scheduleLabel(job)}</span>
             <span>·</span>
             <span>fn: {job.function?.name ?? job.functionId}</span>
@@ -240,7 +239,7 @@ export default function MercobJobPage() {
             size="sm"
             disabled={triggering}
             onClick={handleTrigger}
-            className="border-neutral-700 text-neutral-300 hover:text-white gap-1.5"
+            className="gap-1.5"
           >
             <Play className="w-3.5 h-3.5" />
             Run now
@@ -248,7 +247,7 @@ export default function MercobJobPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="text-neutral-500 hover:text-red-400 p-1 h-auto"
+            className="text-muted-foreground hover:text-destructive p-1 h-auto"
             onClick={handleDelete}
           >
             <Trash2 className="w-4 h-4" />
@@ -256,7 +255,6 @@ export default function MercobJobPage() {
         </div>
       </div>
 
-      {/* Details */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
           { label: 'Recurring', value: job.recurring ? 'Yes' : 'No' },
@@ -264,22 +262,21 @@ export default function MercobJobPage() {
           { label: 'Timeout', value: `${job.timeoutMs / 1000}s` },
           { label: 'Last run', value: job.lastRunAt ? new Date(job.lastRunAt).toLocaleDateString() : '—' },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-neutral-900 border border-neutral-800 rounded-lg p-3">
-            <p className="text-xs text-neutral-500 mb-1">{label}</p>
+          <div key={label} className="bg-muted/40 border border-border rounded-lg p-3">
+            <p className="text-xs text-muted-foreground mb-1">{label}</p>
             <p className="text-sm font-medium">{value}</p>
           </div>
         ))}
       </div>
 
-      {/* Run history */}
       <div>
-        <h2 className="text-sm font-semibold text-neutral-300 mb-3">Run history ({total})</h2>
+        <h2 className="text-sm font-semibold text-foreground/80 mb-3">Run history ({total})</h2>
         {runs.length === 0 ? (
-          <div className="border border-neutral-800 rounded-lg p-8 text-center">
-            <p className="text-sm text-neutral-500">No runs yet</p>
+          <div className="border border-border rounded-lg p-8 text-center">
+            <p className="text-sm text-muted-foreground">No runs yet</p>
           </div>
         ) : (
-          <div className="border border-neutral-800 rounded-lg">
+          <div className="border border-border rounded-lg">
             {runs.map((run) => <RunRow key={run.id} run={run} />)}
           </div>
         )}
@@ -291,17 +288,17 @@ export default function MercobJobPage() {
               size="sm"
               disabled={page === 1}
               onClick={() => changePage(page - 1)}
-              className="text-neutral-400"
+              className="text-muted-foreground"
             >
               Previous
             </Button>
-            <span className="text-xs text-neutral-500">Page {page} of {totalPages}</span>
+            <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
             <Button
               variant="ghost"
               size="sm"
               disabled={page === totalPages}
               onClick={() => changePage(page + 1)}
-              className="text-neutral-400"
+              className="text-muted-foreground"
             >
               Next
             </Button>
