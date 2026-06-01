@@ -17,6 +17,8 @@ import { logger } from './src/lib/logger'
 
 if (!process.env['WORKER_SECRET']) throw new Error('WORKER_SECRET env var is required')
 
+const isDev = process.env['NODE_ENV'] !== 'production'
+
 const app = express()
 
 app.use(cors({ origin: '*' }))
@@ -24,6 +26,16 @@ app.use(express.json())
 app.use(pinoHttp({
   logger,
   autoLogging: { ignore: (req) => req.url === '/health' },
+  customSuccessMessage: (req, res, responseTime) => {
+    const base = `${req.method} ${req.url} ${res.statusCode}`
+    return isDev ? `${base} +${responseTime}ms` : base
+  },
+  customErrorMessage: (err, req, res) => `${req.method} ${req.url} ${res.statusCode}`,
+  serializers: {
+    req: (req) => ({ method: req.method, url: req.url }),
+    res: (res) => ({ statusCode: res.statusCode }),
+    err: (err) => ({ message: err.message, stack: err.stack }),
+  },
 }))
 
 app.use(subdomainMiddleware)
