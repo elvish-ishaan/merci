@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, type FormEvent, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { api } from '../../lib/api'
-import { BuildLogsPanel } from '@/components/build-logs-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -47,10 +46,12 @@ const STATUS_VARIANT: Record<string, string> = {
 
 const INITIAL_ENV_ROWS: EnvRow[] = [{ key: '', value: '' }]
 
-function GithubImportTab({
+function GithubRepoList({
+  selectedUrl,
   onSelect,
 }: {
-  onSelect: (repoUrl: string, projectName: string) => void
+  selectedUrl: string
+  onSelect: (repoUrl: string, defaultName: string) => void
 }) {
   const [connected, setConnected] = useState<boolean | null>(null)
   const [repos, setRepos] = useState<GithubRepo[]>([])
@@ -77,13 +78,13 @@ function GithubImportTab({
   )
 
   if (connected === null) {
-    return <p className="text-muted-foreground text-sm py-4 text-center">Checking GitHub connection…</p>
+    return <p className="text-muted-foreground text-sm py-6 text-center">Checking GitHub connection…</p>
   }
 
   if (!connected) {
     return (
-      <div className="py-6 flex flex-col items-center gap-3">
-        <p className="text-muted-foreground text-sm text-center">
+      <div className="py-8 flex flex-col items-center gap-3">
+        <p className="text-muted-foreground text-sm text-center max-w-xs">
           Connect your GitHub account to browse and import your repositories.
         </p>
         <Button onClick={() => api.connectGithub()} className="gap-2">
@@ -97,43 +98,45 @@ function GithubImportTab({
   }
 
   return (
-    <div className="space-y-3">
-      <Input
-        type="text"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search repositories…"
-      />
+    <div className="w-full rounded-lg border border-border overflow-hidden">
+      <div className="px-3 border-b border-border bg-muted/20">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search repositories…"
+          className="w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+        />
+      </div>
       {loadingRepos ? (
-        <p className="text-muted-foreground text-sm text-center py-4">Loading repositories…</p>
+        <p className="text-muted-foreground text-sm text-center py-8">Loading repositories…</p>
       ) : filtered.length === 0 ? (
-        <p className="text-muted-foreground text-sm text-center py-4">No repositories found.</p>
+        <p className="text-muted-foreground text-sm text-center py-8">No repositories found.</p>
       ) : (
-        <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
-          {filtered.map((repo) => (
-            <button
-              key={repo.id}
-              type="button"
-              onClick={() => onSelect(`https://github.com/${repo.fullName}`, repo.fullName.split('/')[1] ?? repo.fullName)}
-              className="w-full text-left px-3 py-2.5 rounded-lg border border-border hover:border-ring/50 hover:bg-muted/60 transition-colors group"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-foreground/80 group-hover:text-foreground truncate">
-                  {repo.fullName}
-                </span>
-                <Badge
-                  variant="outline"
-                  className="text-xs shrink-0 text-muted-foreground"
+        <ul className="max-h-64 overflow-y-auto">
+          {filtered.map((repo) => {
+            const url = `https://github.com/${repo.fullName}`
+            const isSelected = selectedUrl === url
+            return (
+              <li key={repo.id} className="border-b border-border/50 last:border-b-0">
+                <button
+                  type="button"
+                  onClick={() => onSelect(url, repo.fullName.split('/')[1] ?? repo.fullName)}
+                  className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                    isSelected ? 'bg-muted/70' : 'hover:bg-muted/40'
+                  }`}
                 >
-                  {repo.private ? 'Private' : 'Public'}
-                </Badge>
-              </div>
-              {repo.description && (
-                <p className="text-xs text-muted-foreground mt-0.5 truncate">{repo.description}</p>
-              )}
-            </button>
-          ))}
-        </div>
+                  <span className="flex-1 min-w-0 truncate text-sm font-medium text-foreground/80">
+                    {repo.fullName}
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {repo.private ? 'Private' : 'Public'}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
       )}
     </div>
   )
@@ -149,7 +152,6 @@ function DeployDialog({
   onDeployed: () => void
 }) {
   const [step, setStep] = useState<1 | 2>(1)
-  const [importTab, setImportTab] = useState<'paste' | 'github'>('paste')
   const [repoUrl, setRepoUrl] = useState('')
   const [projectName, setProjectName] = useState('')
   const [envRows, setEnvRows] = useState<EnvRow[]>(INITIAL_ENV_ROWS)
@@ -159,7 +161,6 @@ function DeployDialog({
 
   function reset() {
     setStep(1)
-    setImportTab('paste')
     setRepoUrl('')
     setProjectName('')
     setEnvRows(INITIAL_ENV_ROWS)
@@ -175,15 +176,15 @@ function DeployDialog({
     }
   }
 
-  function handleNext(e: FormEvent) {
-    e.preventDefault()
-    setDeployError('')
-    setStep(2)
+  function handleRepoSelect(url: string, defaultName: string) {
+    setRepoUrl(url)
+    if (!projectName) setProjectName(defaultName)
   }
 
-  function handleGithubSelect(url: string, name: string) {
-    setRepoUrl(url)
-    setProjectName(name)
+  function handleNext(e: FormEvent) {
+    e.preventDefault()
+    if (!repoUrl) return
+    setDeployError('')
     setStep(2)
   }
 
@@ -217,17 +218,17 @@ function DeployDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className={step === 2 ? 'sm:max-w-lg' : 'sm:max-w-md'}>
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pr-6">
             <DialogTitle>New deployment</DialogTitle>
             {!deployResult && (
-              <span className="text-xs text-muted-foreground">Step {step} of 2</span>
+              <span className="text-xs text-muted-foreground tabular-nums">Step {step} of 2</span>
             )}
           </div>
           <DialogDescription>
             {step === 1
-              ? 'Import a Vite-React project from GitHub to deploy.'
+              ? 'Select a repository from GitHub to deploy.'
               : 'Add environment variables for your build (optional).'}
           </DialogDescription>
         </DialogHeader>
@@ -244,78 +245,32 @@ function DeployDialog({
             </Button>
           </div>
         ) : step === 1 ? (
-          <div className="space-y-4">
-            <div className="flex rounded-lg border border-border p-1 gap-1">
-              <button
-                type="button"
-                onClick={() => setImportTab('paste')}
-                className={`flex-1 text-xs py-1.5 rounded-md transition-colors ${
-                  importTab === 'paste'
-                    ? 'bg-muted text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Paste URL
-              </button>
-              <button
-                type="button"
-                onClick={() => setImportTab('github')}
-                className={`flex-1 text-xs py-1.5 rounded-md transition-colors ${
-                  importTab === 'github'
-                    ? 'bg-muted text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Import from GitHub
-              </button>
+          <form onSubmit={handleNext} className="w-full space-y-5">
+            <GithubRepoList selectedUrl={repoUrl} onSelect={handleRepoSelect} />
+            <div className="space-y-1.5">
+              <Label htmlFor="project-name">
+                Project name{' '}
+                <span className="text-muted-foreground font-normal">(optional)</span>
+              </Label>
+              <Input
+                id="project-name"
+                type="text"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                placeholder="my-app"
+              />
             </div>
-
-            {importTab === 'paste' ? (
-              <form onSubmit={handleNext} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="repo-url">GitHub repo URL</Label>
-                  <Input
-                    id="repo-url"
-                    type="url"
-                    value={repoUrl}
-                    onChange={(e) => setRepoUrl(e.target.value)}
-                    required
-                    placeholder="https://github.com/user/repo"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="project-name">
-                    Project name{' '}
-                    <span className="text-muted-foreground font-normal">(optional)</span>
-                  </Label>
-                  <Input
-                    id="project-name"
-                    type="text"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                    placeholder="my-app"
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="ghost" onClick={onClose}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">Next</Button>
-                </div>
-              </form>
-            ) : (
-              <div className="space-y-3">
-                <GithubImportTab onSelect={handleGithubSelect} />
-                <div className="flex justify-end">
-                  <Button type="button" variant="ghost" onClick={onClose}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!repoUrl}>
+                Next
+              </Button>
+            </div>
+          </form>
         ) : (
-          <form onSubmit={handleDeploy} className="space-y-4">
+          <form onSubmit={handleDeploy} className="space-y-5">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Environment variables</Label>
@@ -332,7 +287,7 @@ function DeployDialog({
                 Prefix with <code className="text-foreground/70">VITE_</code> to expose to your app (e.g.{' '}
                 <code className="text-foreground/70">VITE_API_URL</code>).
               </p>
-              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-56 overflow-y-auto">
                 {envRows.map((row, i) => (
                   <div key={i} className="flex gap-2 items-center">
                     <Input
@@ -340,20 +295,20 @@ function DeployDialog({
                       value={row.key}
                       onChange={(e) => updateRow(i, 'key', e.target.value)}
                       placeholder="KEY"
-                      className="font-mono text-xs flex-1"
+                      className="font-mono text-xs flex-1 min-w-0"
                     />
                     <Input
                       type="text"
                       value={row.value}
                       onChange={(e) => updateRow(i, 'value', e.target.value)}
                       placeholder="value"
-                      className="text-xs flex-1"
+                      className="text-xs flex-1 min-w-0"
                     />
                     <button
                       type="button"
                       onClick={() => removeRow(i)}
                       disabled={envRows.length === 1}
-                      className="text-muted-foreground/60 hover:text-destructive transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-lg leading-none pb-0.5"
+                      className="text-muted-foreground/60 hover:text-destructive transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-lg leading-none pb-0.5 shrink-0"
                       aria-label="Remove variable"
                     >
                       ×
@@ -369,8 +324,8 @@ function DeployDialog({
               </p>
             )}
 
-            <div className="flex justify-between gap-2">
-              <Button type="button" variant="ghost" onClick={() => setStep(1)} disabled={deploying}>
+            <div className="flex items-center justify-between pt-1">
+              <Button type="button" variant="outline" onClick={() => setStep(1)} disabled={deploying}>
                 Back
               </Button>
               <div className="flex gap-2">
@@ -398,7 +353,6 @@ function DashboardContent() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [githubNotice, setGithubNotice] = useState<'connected' | 'error' | null>(null)
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
 
   const deployOpen = searchParams.get('deploy') === 'true'
 
@@ -432,7 +386,7 @@ function DashboardContent() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-6">
       {githubNotice && (
         <div
           className={`mb-4 px-4 py-3 rounded-lg border text-sm ${
@@ -446,25 +400,24 @@ function DashboardContent() {
             : 'Failed to connect GitHub. Please try again.'}
         </div>
       )}
-      <h1 className="text-xl font-semibold mb-6">Projects</h1>
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold">Projects</h1>
+      </div>
 
       {loadingProjects ? (
         <p className="text-muted-foreground text-sm">Loading…</p>
       ) : projects.length === 0 ? (
-        <div className="border border-dashed border-border rounded-xl px-6 py-12 text-center">
-          <p className="text-muted-foreground text-sm">
-            No deployments yet.{' '}
-            <button
-              onClick={() => router.push('/dashboard?deploy=true')}
-              className="text-foreground/80 hover:text-foreground underline underline-offset-2 transition-colors"
-            >
-              Deploy your first project
-            </button>
-            .
-          </p>
+        <div className="border border-border rounded-lg p-12 text-center">
+          <p className="text-muted-foreground text-sm">No deployments yet.</p>
+          <button
+            onClick={() => router.push('/dashboard?deploy=true')}
+            className="mt-3 text-sm text-foreground/80 hover:text-foreground underline underline-offset-2 transition-colors"
+          >
+            Deploy your first project
+          </button>
         </div>
       ) : (
-        <div className="border border-border rounded-xl overflow-hidden">
+        <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
@@ -479,7 +432,7 @@ function DashboardContent() {
               {projects.map((p, i) => (
                 <tr
                   key={p.id}
-                  onClick={() => setSelectedProject(p)}
+                  onClick={() => router.push(`/dashboard/projects/${p.id}`)}
                   className={`${i !== projects.length - 1 ? 'border-b border-border/60' : ''} hover:bg-muted/30 transition-colors cursor-pointer`}
                 >
                   <td className="px-4 py-3 font-medium">{p.projectName}</td>
@@ -537,19 +490,6 @@ function DashboardContent() {
           fetchProjects()
         }}
       />
-
-      {selectedProject && (
-        <BuildLogsPanel
-          projectId={selectedProject.id}
-          projectName={selectedProject.projectName}
-          onClose={() => setSelectedProject(null)}
-          onStatusChange={(status) =>
-            setProjects((prev) =>
-              prev.map((p) => (p.id === selectedProject.id ? { ...p, status } : p)),
-            )
-          }
-        />
-      )}
     </div>
   )
 }

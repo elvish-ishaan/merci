@@ -55,14 +55,14 @@ export function AppSidebar() {
   return (
     <aside className="w-56 shrink-0 bg-card border-r border-border flex flex-col h-screen">
       <div className="px-4 py-5">
-        <span className="font-semibold tracking-tight text-base">mercy</span>
+        <span className="font-semibold tracking-wider text-base">Mercy</span>
       </div>
 
       <div className="px-3 pb-4">
-        <Button asChild className="w-full justify-start gap-2" size="sm">
+        <Button asChild className="w-full p-6 justify-start gap-2" size="sm">
           <Link href="/dashboard?deploy=true">
             <Rocket className="w-3.5 h-3.5" />
-            Deploy
+            Deploy Now
           </Link>
         </Button>
       </div>

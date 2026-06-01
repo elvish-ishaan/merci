@@ -50,6 +50,43 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ repoUrl, projectName, envVars }) },
     ),
 
+  getProject: (id: string) =>
+    request<{
+      project: {
+        id: string
+        projectName: string
+        repoUrl: string
+        status: string
+        bucketPrefix: string | null
+        deployedUrl: string | null
+        subdomain: string
+        envVarCount: number
+        createdAt: string
+        updatedAt: string
+      }
+    }>(`/deploy/${id}`),
+
+  updateProject: (id: string, data: { projectName: string }) =>
+    request<{ project: { id: string; projectName: string; status: string; updatedAt: string } }>(
+      `/deploy/${id}`,
+      { method: 'PATCH', body: JSON.stringify(data) },
+    ),
+
+  deleteProject: (id: string) =>
+    request<{ ok: boolean }>(`/deploy/${id}`, { method: 'DELETE' }),
+
+  redeployProject: (id: string) =>
+    request<{ ok: boolean; status: string }>(`/deploy/${id}/redeploy`, { method: 'POST' }),
+
+  getProjectEnvVars: (id: string) =>
+    request<{ envVars: { id: string; key: string; createdAt: string }[] }>(`/deploy/${id}/env`),
+
+  addProjectEnvVar: (id: string, key: string, value: string) =>
+    request<{ ok: boolean }>(`/deploy/${id}/env`, { method: 'POST', body: JSON.stringify({ key, value }) }),
+
+  deleteProjectEnvVar: (id: string, key: string) =>
+    request<{ ok: boolean }>(`/deploy/${id}/env/${encodeURIComponent(key)}`, { method: 'DELETE' }),
+
   getGithubStatus: () =>
     request<{ connected: boolean }>('/github/status'),
 

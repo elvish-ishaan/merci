@@ -35,6 +35,16 @@ ws.{$APP_DOMAIN} {
     reverse_proxy ws:3002
 }
 
+# Deployed app subdomains (e.g. myapp.app.example.com)
+*.app.{$APP_DOMAIN} {
+    tls {
+        issuer acme {
+            disable_tlsalpn_challenge
+        }
+    }
+    reverse_proxy api:3001
+}
+
 # On-demand TLS for user-connected custom domains
 # This handles any domain not matched above
 :443 {

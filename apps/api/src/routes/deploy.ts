@@ -107,4 +107,181 @@ deploy.post('/', authMiddleware, async (req, res) => {
   })
 })
 
+// GET /deploy/:projectId — single project detail
+deploy.get('/:projectId', authMiddleware, async (req, res) => {
+  const userId = res.locals['userId'] as string
+  const { projectId } = req.params as { projectId: string }
+
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, userId },
+    select: {
+      id: true,
+      projectName: true,
+      repoUrl: true,
+      status: true,
+      bucketPrefix: true,
+      deployedUrl: true,
+      subdomain: true,
+      createdAt: true,
+      updatedAt: true,
+      _count: { select: { envVars: true } },
+    },
+  })
+
+  if (!project) {
+    res.status(404).json({ error: 'Project not found' })
+    return
+  }
+
+  const { _count, ...rest } = project
+  res.json({ project: { ...rest, envVarCount: _count.envVars } })
+})
+
+// PATCH /deploy/:projectId — rename project
+deploy.patch('/:projectId', authMiddleware, async (req, res) => {
+  const userId = res.locals['userId'] as string
+  const { projectId } = req.params as { projectId: string }
+  const { projectName } = req.body as { projectName?: string }
+
+  if (!projectName?.trim()) {
+    res.status(400).json({ error: 'projectName is required' })
+    return
+  }
+
+  const project = await prisma.project.findFirst({ where: { id: projectId, userId } })
+  if (!project) {
+    res.status(404).json({ error: 'Project not found' })
+    return
+  }
+
+  const updated = await prisma.project.update({
+    where: { id: projectId },
+    data: { projectName: projectName.trim() },
+    select: { id: true, projectName: true, status: true, updatedAt: true },
+  })
+
+  res.json({ project: updated })
+})
+
+// DELETE /deploy/:projectId — delete project
+deploy.delete('/:projectId', authMiddleware, async (req, res) => {
+  const userId = res.locals['userId'] as string
+  const { projectId } = req.params as { projectId: string }
+
+  const project = await prisma.project.findFirst({ where: { id: projectId, userId } })
+  if (!project) {
+    res.status(404).json({ error: 'Project not found' })
+    return
+  }
+
+  await prisma.project.delete({ where: { id: projectId } })
+  res.json({ ok: true })
+})
+
+// POST /deploy/:projectId/redeploy — re-queue deployment with existing env vars
+deploy.post('/:projectId/redeploy', authMiddleware, async (req, res) => {
+  const userId = res.locals['userId'] as string
+  const { projectId } = req.params as { projectId: string }
+
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, userId },
+    include: { envVars: { select: { key: true, encryptedValue: true } } },
+  })
+
+  if (!project) {
+    res.status(404).json({ error: 'Project not found' })
+    return
+  }
+
+  await prisma.project.update({ where: { id: projectId }, data: { status: 'QUEUED' } })
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { githubAccessToken: true } })
+  const githubToken = user?.githubAccessToken ? decryptValue(user.githubAccessToken) : undefined
+
+  await deployQueue.add('deploy', {
+    projectId,
+    repoUrl: project.repoUrl,
+    encryptedEnvVars: project.envVars,
+    githubToken,
+  })
+
+  logger.debug({ projectId, userId }, 'redeploy job queued')
+  res.json({ ok: true, status: 'QUEUED' })
+})
+
+// GET /deploy/:projectId/env — list env var keys (no values)
+deploy.get('/:projectId/env', authMiddleware, async (req, res) => {
+  const userId = res.locals['userId'] as string
+  const { projectId } = req.params as { projectId: string }
+
+  const project = await prisma.project.findFirst({ where: { id: projectId, userId } })
+  if (!project) {
+    res.status(404).json({ error: 'Project not found' })
+    return
+  }
+
+  const envVars = await prisma.envVar.findMany({
+    where: { projectId },
+    select: { id: true, key: true, createdAt: true },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  res.json({ envVars })
+})
+
+// POST /deploy/:projectId/env — add or update an env var
+deploy.post('/:projectId/env', authMiddleware, async (req, res) => {
+  const userId = res.locals['userId'] as string
+  const { projectId } = req.params as { projectId: string }
+  const { key, value } = req.body as { key?: string; value?: string }
+
+  if (!key?.trim()) {
+    res.status(400).json({ error: 'key is required' })
+    return
+  }
+  if (value === undefined) {
+    res.status(400).json({ error: 'value is required' })
+    return
+  }
+
+  const project = await prisma.project.findFirst({ where: { id: projectId, userId } })
+  if (!project) {
+    res.status(404).json({ error: 'Project not found' })
+    return
+  }
+
+  const trimmedKey = key.trim()
+  const encryptedValue = encryptValue(value)
+  const existing = await prisma.envVar.findFirst({ where: { projectId, key: trimmedKey } })
+
+  if (existing) {
+    await prisma.envVar.update({ where: { id: existing.id }, data: { encryptedValue } })
+  } else {
+    await prisma.envVar.create({ data: { projectId, key: trimmedKey, encryptedValue } })
+  }
+
+  res.json({ ok: true })
+})
+
+// DELETE /deploy/:projectId/env/:key — delete an env var by key name
+deploy.delete('/:projectId/env/:key', authMiddleware, async (req, res) => {
+  const userId = res.locals['userId'] as string
+  const { projectId, key } = req.params as { projectId: string; key: string }
+
+  const project = await prisma.project.findFirst({ where: { id: projectId, userId } })
+  if (!project) {
+    res.status(404).json({ error: 'Project not found' })
+    return
+  }
+
+  const envVar = await prisma.envVar.findFirst({ where: { projectId, key } })
+  if (!envVar) {
+    res.status(404).json({ error: 'Environment variable not found' })
+    return
+  }
+
+  await prisma.envVar.delete({ where: { id: envVar.id } })
+  res.json({ ok: true })
+})
+
 export default deploy

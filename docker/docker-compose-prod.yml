@@ -69,6 +69,7 @@ services:
       GITHUB_REDIRECT_URI: ${GITHUB_REDIRECT_URI}
       FRONTEND_URL: https://${APP_DOMAIN}
       WORKER_SECRET: ${WORKER_SECRET}
+      BASE_DOMAIN: app.${APP_DOMAIN}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -115,6 +116,7 @@ services:
       R2_BUCKET_NAME: ${R2_BUCKET_NAME}
       ENV_ENCRYPTION_KEY: ${ENV_ENCRYPTION_KEY}
       API_BASE_URL: http://api:3001
+      BASE_DOMAIN: app.${APP_DOMAIN}
     depends_on:
       migrate:
         condition: service_completed_successfully

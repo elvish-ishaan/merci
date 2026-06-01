@@ -62,41 +62,47 @@ github.get('/auth/github/callback', async (req, res) => {
     return
   }
 
-  // Exchange code for access token
-  const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({
-      client_id: GITHUB_CLIENT_ID,
-      client_secret: GITHUB_CLIENT_SECRET,
-      code,
-      redirect_uri: GITHUB_REDIRECT_URI,
-    }),
-  })
+  try {
+    // Exchange code for access token
+    const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        client_id: GITHUB_CLIENT_ID,
+        client_secret: GITHUB_CLIENT_SECRET,
+        code,
+        redirect_uri: GITHUB_REDIRECT_URI,
+      }),
+    })
 
-  const tokenData = await tokenRes.json() as { access_token?: string; error?: string }
-  if (!tokenData.access_token) {
+    const tokenData = await tokenRes.json() as { access_token?: string; error?: string }
+    if (!tokenData.access_token) {
+      logger.warn({ userId, error: tokenData.error }, 'github token exchange failed')
+      res.redirect(`${FRONTEND_URL}/dashboard?github=error`)
+      return
+    }
+
+    // Fetch GitHub user ID
+    const userRes = await fetch('https://api.github.com/user', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}`, 'User-Agent': 'mercy-app' },
+    })
+    const ghUser = await userRes.json() as { id: number }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        githubId: String(ghUser.id),
+        githubAccessToken: encryptValue(tokenData.access_token),
+      },
+    })
+
+    logger.debug({ userId, githubUserId: String(ghUser.id) }, 'github account connected')
+
+    res.redirect(`${FRONTEND_URL}/dashboard?github=connected`)
+  } catch (err) {
+    logger.error({ err, userId }, 'github oauth callback failed')
     res.redirect(`${FRONTEND_URL}/dashboard?github=error`)
-    return
   }
-
-  // Fetch GitHub user ID
-  const userRes = await fetch('https://api.github.com/user', {
-    headers: { Authorization: `Bearer ${tokenData.access_token}`, 'User-Agent': 'mercy-app' },
-  })
-  const ghUser = await userRes.json() as { id: number }
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      githubId: String(ghUser.id),
-      githubAccessToken: encryptValue(tokenData.access_token),
-    },
-  })
-
-  logger.debug({ userId, githubUserId: String(ghUser.id) }, 'github account connected')
-
-  res.redirect(`${FRONTEND_URL}/dashboard?github=connected`)
 })
 
 // GET /github/status — whether the current user has connected GitHub
