@@ -1,0 +1,59 @@
+{
+  "name": "mercy",
+
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "workspace",
+  "workspaceFolder": "/workspace",
+
+  "forwardPorts": [3000, 3001, 3002, 5432, 6379],
+  "portsAttributes": {
+    "3000": { "label": "Next.js web", "onAutoForward": "silent" },
+    "3001": { "label": "Bun API", "onAutoForward": "silent" },
+    "3002": { "label": "Bun WS", "onAutoForward": "silent" },
+    "5432": { "label": "PostgreSQL", "onAutoForward": "silent" },
+    "6379": { "label": "Redis", "onAutoForward": "silent" }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "remoteUser": "node",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-typescript-next",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "Prisma.prisma",
+        "bradlc.vscode-tailwindcss",
+        "ms-azuretools.vscode-docker",
+        "oven.bun-vscode"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.formatOnPaste": false,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": { "path": "/bin/zsh" }
+        },
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "prisma.schemaPath": "./packages/db/prisma/schema.prisma",
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/.turbo": true,
+          "**/.next": true
+        },
+        "search.exclude": {
+          "**/node_modules": true,
+          "**/.turbo": true,
+          "**/.next": true,
+          "**/bun.lock": true
+        }
+      }
+    }
+  }
+}

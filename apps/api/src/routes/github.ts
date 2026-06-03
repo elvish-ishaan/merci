@@ -57,7 +57,8 @@ github.get('/auth/github/callback', async (req, res) => {
   try {
     const payload = await verifyToken(state)
     userId = payload.userId
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, 'github oauth state verification failed')
     res.redirect(`${FRONTEND_URL}/dashboard?github=error`)
     return
   }

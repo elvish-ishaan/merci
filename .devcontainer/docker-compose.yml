@@ -1,0 +1,70 @@
+services:
+  workspace:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspace:cached
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Keep .next on the container's native Linux filesystem to avoid the
+      # slow Windows bind mount warning from Next.js during hot reloading.
+      - next-cache:/workspace/apps/web/.next
+    working_dir: /workspace
+    command: sleep infinity
+    user: node
+    environment:
+      # Override any .env files that still use 'localhost' hostnames.
+      # Inside the devcontainer, services are reachable by their compose service names.
+      DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/mercy"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      REDIS_URL: "redis://redis:6379"
+    networks:
+      - merci
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mercy
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - merci
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mercy"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - merci
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  postgres-data:
+  redis-data:
+  next-cache:
+
+networks:
+  merci:
+    driver: bridge
