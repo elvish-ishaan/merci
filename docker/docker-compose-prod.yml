@@ -38,6 +38,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}
+      NEXT_PUBLIC_ACTIONS_URL: ${NEXT_PUBLIC_ACTIONS_URL}
     restart: unless-stopped
     expose:
       - "3000"
@@ -128,6 +129,55 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - merci
+
+  merci-actions:
+    image: elvishishaan/merci-actions:latest
+    restart: unless-stopped
+    expose:
+      - "3003"
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ENV_ENCRYPTION_KEY: ${ENV_ENCRYPTION_KEY}
+      WORKER_SECRET: ${WORKER_SECRET}
+      MERCI_ACTIONS_URL: ${MERCI_ACTIONS_URL}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - merci
+
+  action-worker:
+    image: elvishishaan/merci-action-worker:latest
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ENV_ENCRYPTION_KEY: ${ENV_ENCRYPTION_KEY}
+      WORKER_SECRET: ${WORKER_SECRET}
+      MERCI_ACTIONS_INTERNAL_URL: http://merci-actions:3003
+      WORKER_CONCURRENCY: ${ACTION_WORKER_CONCURRENCY:-2}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      merci-actions:
+        condition: service_started
     networks:
       - merci
 
