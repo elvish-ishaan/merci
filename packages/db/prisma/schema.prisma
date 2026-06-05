@@ -18,6 +18,7 @@ model User {
   scheduledJobs     ScheduledJob[]
   githubId          String?          @unique
   githubAccessToken String?
+  actionRepos       ActionRepo[]
 }
 
 model Project {
@@ -188,4 +189,100 @@ model CustomDomain {
   updatedAt DateTime        @updatedAt
 
   @@index([projectId])
+}
+
+model ActionRepo {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repoFullName  String
+  webhookId     Int?
+  webhookSecret String
+  createdAt     DateTime       @default(now())
+  secrets       ActionSecret[]
+  runs          ActionRun[]
+
+  @@unique([userId, repoFullName])
+  @@index([userId])
+}
+
+model ActionSecret {
+  id             String     @id @default(uuid())
+  repoId         String
+  repo           ActionRepo @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  name           String
+  encryptedValue String
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([repoId, name])
+  @@index([repoId])
+}
+
+model ActionRun {
+  id           String      @id @default(uuid())
+  repoId       String
+  repo         ActionRepo  @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  workflowFile String
+  event        String
+  ref          String
+  sha          String
+  status       CIStatus    @default(QUEUED)
+  conclusion   String?
+  createdAt    DateTime    @default(now())
+  startedAt    DateTime?
+  completedAt  DateTime?
+  jobs         ActionJob[]
+
+  @@index([repoId, createdAt])
+}
+
+model ActionJob {
+  id          String       @id @default(uuid())
+  runId       String
+  run         ActionRun    @relation(fields: [runId], references: [id], onDelete: Cascade)
+  jobKey      String
+  name        String
+  status      CIStatus     @default(QUEUED)
+  conclusion  String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  steps       ActionStep[]
+
+  @@index([runId])
+}
+
+model ActionStep {
+  id          String      @id @default(uuid())
+  jobId       String
+  job         ActionJob   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  name        String
+  number      Int
+  status      CIStatus    @default(QUEUED)
+  conclusion  String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  logs        ActionLog[]
+
+  @@index([jobId])
+}
+
+model ActionLog {
+  id        BigInt     @id @default(autoincrement())
+  stepId    String
+  step      ActionStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  line      String
+  stream    String     @default("stdout")
+  createdAt DateTime   @default(now())
+
+  @@index([stepId])
+}
+
+enum CIStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  SKIPPED
 }
