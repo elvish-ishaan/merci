@@ -1,6 +1,6 @@
 # action-worker
 
-The CI execution worker for mercy. Consumes jobs from the `merci-actions` BullMQ queue, clones the repository, pulls a Docker image, creates a container, and runs each workflow step inside it. Streams every log line back to `merci-actions` in real time.
+The CI execution worker for mercy. Consumes jobs from the `merci-actions` BullMQ queue, clones the repository, pulls a Docker image, creates a container, and runs each workflow step inside it. Streams every log line back to the `api` service in real time.
 
 ---
 
@@ -38,7 +38,7 @@ BullMQ "merci-actions" queue
    │    3. docker cp <cache>/. <container>:/github/actions/…  │
    │    4. docker exec node /github/actions/…/dist/index.js   │
    │                                                          │
-   │  All stdout/stderr streamed to merci-actions internal API│
+   │  All stdout/stderr streamed to api internal endpoint     │
    └──────────────────────────────────────────────────────────┘
           │
    Cleanup: docker rm -f <container>  +  rm -rf /tmp/merci-action-<id>
@@ -53,13 +53,15 @@ BullMQ "merci-actions" queue
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `MERCI_ACTIONS_INTERNAL_URL` | yes | `http://localhost:3003` | Base URL of `merci-actions` for internal callbacks |
-| `WORKER_SECRET` | yes | — | Shared secret for internal API authentication |
+| `MERCI_ACTIONS_INTERNAL_URL` | yes | `http://localhost:3001` | Base URL of `api` for internal callbacks (logs, status patches) |
+| `WORKER_SECRET` | yes | — | Shared secret — **must match `WORKER_SECRET` in `apps/api/.env`** |
 | `DATABASE_URL` | yes | — | PostgreSQL connection string (reads step IDs) |
 | `REDIS_HOST` | yes | — | Redis host |
 | `REDIS_PORT` | no | `6379` | Redis port |
-| `ENV_ENCRYPTION_KEY` | yes | — | 64-char hex key (decrypts GitHub token + secrets) |
+| `ENV_ENCRYPTION_KEY` | yes | — | 64-char hex key (decrypts GitHub token + secrets) — **must match `apps/api/.env`** |
 | `WORKER_CONCURRENCY` | no | `2` | Max concurrent Docker containers |
+
+> **Important:** `WORKER_SECRET` and `ENV_ENCRYPTION_KEY` must be identical in both `apps/action-worker/.env` and `apps/api/.env`. A mismatch causes every internal API call to return 401, silently dropping all status updates and logs.
 
 ---
 
@@ -118,7 +120,7 @@ Every container gets the following env vars from `buildBaseEnv`:
 
 ## Logging
 
-Every log line produced by a step is sent to `merci-actions` via `POST /internal/action-logs` and stored in `ActionLog`. It is also written to the terminal:
+Every log line produced by a step is sent to the api via `POST /internal/action-logs` and stored in `ActionLog`. Non-OK responses (e.g. a secret mismatch) are logged as warnings so misconfiguration is visible immediately. Log lines are also written to the terminal:
 
 - `stdout` lines → `logger.debug`
 - `stderr` lines → `logger.warn` (always visible, useful for catching errors immediately)
@@ -151,7 +153,7 @@ apps/action-worker/
       uses.ts           uses: step executor — action download, copy, run
       runner-env.ts     buildBaseEnv() + readExportedEnv()
       expression.ts     ${{ }} interpolation + if: condition evaluation
-      api.ts            postLog / patchStep / patchJob / patchRun → merci-actions
+      api.ts            postLog / patchStep / patchJob / patchRun → api /internal
       redis.ts           ioredis connection config
       logger.ts         pino logger instance
 ```

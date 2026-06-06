@@ -1,4 +1,4 @@
-const BASE = process.env['NEXT_PUBLIC_ACTIONS_URL'] ?? 'http://localhost:3003'
+const BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
 function token() {
   return typeof window !== 'undefined' ? localStorage.getItem('token') : null

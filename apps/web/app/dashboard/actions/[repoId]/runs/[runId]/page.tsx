@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, createContext, useContext } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { actionsApi, type ActionRun, type ActionJob, type ActionStep, type ActionLog, type CIStatus } from '@/lib/actions-api'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,36 @@ const STATUS_CLASS: Record<CIStatus, string> = {
 }
 
 const ACTIVE: Set<CIStatus> = new Set(['QUEUED', 'RUNNING'])
+
+// ── Realtime run socket ──────────────────────────────────────────────────────
+
+type RunEvent =
+  | { type: 'run-status'; status?: CIStatus; conclusion?: string | null; startedAt?: string | null; completedAt?: string | null }
+  | { type: 'job-status'; jobId: string; status?: CIStatus; conclusion?: string | null; startedAt?: string | null; completedAt?: string | null }
+  | { type: 'step-status'; stepId: string; status?: CIStatus; conclusion?: string | null; startedAt?: string | null; completedAt?: string | null }
+  | { type: 'log'; stepId: string; id: string; line: string; stream: string }
+
+type RunSocket = {
+  subscribe: (fn: (e: RunEvent) => void) => () => void
+  connected: boolean
+}
+
+const RunSocketContext = createContext<RunSocket | null>(null)
+const useRunSocket = () => useContext(RunSocketContext)
+
+/** Apply only the fields actually present on a status event, preserving timestamps from partial patches. */
+function mergeStatus<T extends { status: CIStatus; conclusion: string | null; startedAt: string | null; completedAt: string | null }>(
+  prev: T,
+  e: { status?: CIStatus; conclusion?: string | null; startedAt?: string | null; completedAt?: string | null },
+): T {
+  return {
+    ...prev,
+    ...(e.status !== undefined && { status: e.status }),
+    ...(e.conclusion !== undefined && { conclusion: e.conclusion }),
+    ...(e.startedAt != null && { startedAt: e.startedAt }),
+    ...(e.completedAt != null && { completedAt: e.completedAt }),
+  }
+}
 
 function StatusBadge({ status }: { status: CIStatus }) {
   return (
@@ -44,6 +74,8 @@ function StepRow({ step, runId, jobId }: { step: ActionStep; runId: string; jobI
   const [logs, setLogs] = useState<ActionLog[] | null>(null)
   const [loadingLogs, setLoadingLogs] = useState(false)
   const logBottomRef = useRef<HTMLDivElement>(null)
+  const maxLogIdRef = useRef<bigint>(-1n)
+  const socket = useRunSocket()
 
   async function toggle() {
     if (!expanded && logs === null) {
@@ -51,6 +83,10 @@ function StepRow({ step, runId, jobId }: { step: ActionStep; runId: string; jobI
       try {
         const d = await actionsApi.getStepLogs(runId, jobId, step.id)
         setLogs(d.logs)
+        for (const l of d.logs) {
+          const n = BigInt(l.id)
+          if (n > maxLogIdRef.current) maxLogIdRef.current = n
+        }
       } catch {
         setLogs([])
       } finally {
@@ -60,17 +96,20 @@ function StepRow({ step, runId, jobId }: { step: ActionStep; runId: string; jobI
     setExpanded((v) => !v)
   }
 
-  // Poll for new logs while step is running and expanded
+  // Stream new log lines over the run socket while this step is expanded
   useEffect(() => {
-    if (!expanded || !ACTIVE.has(step.status)) return
-    const id = setInterval(async () => {
-      try {
-        const d = await actionsApi.getStepLogs(runId, jobId, step.id)
-        setLogs(d.logs)
-      } catch {}
-    }, 2000)
-    return () => clearInterval(id)
-  }, [expanded, step.status, runId, jobId, step.id])
+    if (!expanded || !socket) return
+    return socket.subscribe((e) => {
+      if (e.type !== 'log' || e.stepId !== step.id) return
+      const n = BigInt(e.id)
+      if (n <= maxLogIdRef.current) return
+      maxLogIdRef.current = n
+      setLogs((prev) => [
+        ...(prev ?? []),
+        { id: e.id, line: e.line, stream: e.stream, createdAt: new Date().toISOString() },
+      ])
+    })
+  }, [expanded, socket, step.id])
 
   // Auto-scroll to bottom when new logs arrive while running
   useEffect(() => {
@@ -127,6 +166,7 @@ function JobRow({ job, runId }: { job: ActionJob; runId: string }) {
   const [expanded, setExpanded] = useState(false)
   const [steps, setSteps] = useState<ActionStep[] | null>(null)
   const [loadingSteps, setLoadingSteps] = useState(false)
+  const socket = useRunSocket()
 
   async function toggle() {
     if (!expanded && steps === null) {
@@ -143,17 +183,14 @@ function JobRow({ job, runId }: { job: ActionJob; runId: string }) {
     setExpanded((v) => !v)
   }
 
-  // Poll for updated step statuses while job is active and expanded
+  // Live step-status updates once steps are loaded
   useEffect(() => {
-    if (!expanded || !ACTIVE.has(job.status)) return
-    const id = setInterval(async () => {
-      try {
-        const d = await actionsApi.getJob(runId, job.id)
-        setSteps(d.job.steps)
-      } catch {}
-    }, 2000)
-    return () => clearInterval(id)
-  }, [expanded, job.status, runId, job.id])
+    if (!socket) return
+    return socket.subscribe((e) => {
+      if (e.type !== 'step-status') return
+      setSteps((prev) => (prev ? prev.map((s) => (s.id === e.stepId ? mergeStatus(s, e) : s)) : prev))
+    })
+  }, [socket])
 
   const duration = durationLabel(job.startedAt, job.completedAt)
 
@@ -194,6 +231,14 @@ export default function RunDetailPage() {
   const [run, setRun] = useState<(ActionRun & { jobs: ActionJob[] }) | null>(null)
   const [loading, setLoading] = useState(true)
   const [rerunning, setRerunning] = useState(false)
+  const [connected, setConnected] = useState(false)
+
+  // Fan-out registry for run socket events
+  const subscribersRef = useRef(new Set<(e: RunEvent) => void>())
+  const subscribe = useCallback((fn: (e: RunEvent) => void) => {
+    subscribersRef.current.add(fn)
+    return () => { subscribersRef.current.delete(fn) }
+  }, [])
 
   async function handleRerun() {
     if (!run) return
@@ -219,12 +264,44 @@ export default function RunDetailPage() {
 
   useEffect(() => { fetchRun() }, [fetchRun])
 
-  // Poll run + job statuses while the run is active
+  // Open the realtime run socket; fan messages out to subscribed components
   useEffect(() => {
-    if (!run || !ACTIVE.has(run.status)) return
-    const id = setInterval(fetchRun, 3000)
-    return () => clearInterval(id)
-  }, [run?.status, fetchRun])
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    if (!token || !runId) return
+
+    const wsUrl = process.env['NEXT_PUBLIC_WS_URL'] ?? 'ws://localhost:3002'
+    const ws = new WebSocket(`${wsUrl}/actions/${runId}?token=${encodeURIComponent(token)}`)
+
+    ws.onopen = () => setConnected(true)
+    ws.onclose = () => setConnected(false)
+    ws.onerror = () => setConnected(false)
+    ws.onmessage = (event) => {
+      let msg: RunEvent
+      try {
+        msg = JSON.parse(event.data as string) as RunEvent
+      } catch {
+        return
+      }
+      for (const fn of subscribersRef.current) fn(msg)
+    }
+
+    return () => ws.close()
+  }, [runId])
+
+  // Page-level state: keep run + job badges in sync from the socket
+  useEffect(() => {
+    return subscribe((e) => {
+      if (e.type === 'run-status') {
+        setRun((prev) => (prev ? mergeStatus(prev, e) : prev))
+      } else if (e.type === 'job-status') {
+        setRun((prev) =>
+          prev
+            ? { ...prev, jobs: prev.jobs.map((j) => (j.id === e.jobId ? mergeStatus(j, e) : j)) }
+            : prev,
+        )
+      }
+    })
+  }, [subscribe])
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>
   if (!run) return null
@@ -233,6 +310,7 @@ export default function RunDetailPage() {
   const duration = durationLabel(run.startedAt, run.completedAt)
 
   return (
+    <RunSocketContext.Provider value={{ subscribe, connected }}>
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-start gap-4 mb-6">
         <Button
@@ -247,6 +325,12 @@ export default function RunDetailPage() {
           <div className="flex items-center gap-2.5 mb-1">
             <h1 className="text-xl font-semibold font-mono">{run.workflowFile}</h1>
             <StatusBadge status={run.status} />
+            {ACTIVE.has(run.status) && (
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/40'}`} />
+                {connected ? 'Live' : 'Reconnecting…'}
+              </span>
+            )}
             {!ACTIVE.has(run.status) && (
               <Button
                 variant="outline"
@@ -305,5 +389,6 @@ export default function RunDetailPage() {
         </div>
       )}
     </div>
+    </RunSocketContext.Provider>
   )
 }

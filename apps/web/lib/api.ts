@@ -182,6 +182,27 @@ export const api = {
     request<{ run: MercobRun & { logs: MercobRunLog[]; job: { id: string; name: string; functionId: string } } }>(
       `/api/mercob/runs/${runId}`
     ),
+
+  // ---- Sandbox API Keys ----
+  getSandboxKeys: () =>
+    request<{ keys: SandboxApiKey[] }>('/api/sandbox/keys'),
+
+  createSandboxKey: (name: string) =>
+    request<{ key: SandboxApiKey; plainKey: string }>('/api/sandbox/keys', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+
+  deleteSandboxKey: (id: string) =>
+    request<{ ok: boolean }>(`/api/sandbox/keys/${id}`, { method: 'DELETE' }),
+}
+
+export interface SandboxApiKey {
+  id: string
+  name: string
+  keyPrefix: string
+  createdAt: string
+  lastUsedAt: string | null
 }
 
 export type ScheduleKind = 'DAILY' | 'WEEKLY' | 'INTERVAL' | 'ONCE' | 'CRON'

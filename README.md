@@ -9,13 +9,13 @@ A self-hosted cloud platform. Deploy static sites, run serverless functions, sch
 | App / Package | Description |
 |---|---|
 | `apps/web` | Next.js dashboard (React 19, Tailwind v4, shadcn/ui) |
-| `apps/api` | REST API — auth, deployments, Mercio, Mercob (Express + Bun, port 3001) |
-| `apps/ws` | WebSocket service — real-time build log streaming (port 3002) |
+| `apps/api` | REST API — auth, deployments, Mercio, Mercob, CI webhooks + orchestration + MCP server (Express + Bun, port 3001) |
+| `apps/ws` | WebSocket service — real-time log streaming for builds and CI runs (port 3002) |
 | `apps/worker` | Build worker — clones repos, runs esbuild, uploads to R2 |
 | `apps/mercio-runtime` | Serverless function runtime — executes user code in workerd V8 isolates |
 | `apps/mercob` | Scheduled job engine — polls DB, dispatches to BullMQ |
-| `apps/merci-actions` | CI orchestration service — receives GitHub webhooks, parses workflows, queues jobs (port 3003) |
 | `apps/action-worker` | CI execution worker — clones repos, manages Docker containers, runs workflow steps |
+| `apps/merci-sandbox-engine` | Sandbox execution engine — spins Docker containers to run AI-generated JS/TS code (port 3003) |
 | `packages/db` | Prisma schema + generated client (shared across all services) |
 | `packages/logger` | Shared pino logger factory |
 | `packages/crypto` | AES-256-GCM encrypt/decrypt for secrets and tokens |
@@ -34,44 +34,47 @@ Upload a zip of Node.js code and get a public URL. Each request is executed in a
 Cron, interval, daily, weekly, or one-shot schedules that call any Mercio function. Full run history with logs.
 
 ### Merci Actions — CI Runner
-GitHub Actions-compatible CI engine. Connect a repo, push code, and your `.github/workflows/*.yml` files run automatically in Docker containers. Includes:
-- Real-time log streaming to the dashboard (setup, clone, pull, and every step)
+GitHub Actions-compatible CI engine built into `apps/api`. Connect a repo, push code, and your `.github/workflows/*.yml` files run automatically in Docker containers. Includes:
+- Real-time log and status streaming via WebSocket — no polling, sub-second updates
 - `actions/checkout@v4` and other Node.js actions fully supported
 - Re-run any workflow run from the UI without pushing again
 - Per-repo encrypted secrets
+
+### Merci Sandbox — MCP Code Execution
+Run AI-generated JavaScript/TypeScript code in isolated Docker containers via the [Model Context Protocol](https://modelcontextprotocol.io). LLM clients (Claude Code, Claude Desktop, etc.) connect to the MCP server at `POST /mcp` and call the `execute_code` tool. Each execution gets a fresh container with no network access, capped at 256 MB RAM and 0.5 CPU — output is returned as stdout + stderr + exit code.
+
+**Two access paths, one shared service:**
+- **MCP** (`/mcp`) — for LLM clients; authenticated with a Sandbox API key
+- **REST** (`/api/sandbox/execute`) — for the future TS/Python SDK; authenticated with a user JWT
+
+API keys are managed from the **Sandbox** page in the dashboard (`/dashboard/sandbox`). The MCP URL for repo-scoped Claude Code use is configured in `.claude/settings.local.json`.
 
 ---
 
 ## Architecture
 
 ```
-Browser
+Browser / LLM Client
   │
   ├── HTTPS ──► Caddy (reverse proxy + TLS)
   │                │
   │      ┌─────────┴──────────────────────────────────┐
   │      │                                            │
   │   apps/web (Next.js :3000)             apps/api (:3001)
-  │                                                   │
-  │              ┌────────────────────────────────────┤
-  │              │                                    │
-  │         apps/ws (:3002)            apps/merci-actions (:3003)
-  │         (WebSocket)                (GitHub webhooks + CI API)
-  │
-  └── GitHub Webhooks ──► apps/merci-actions
-                                  │
-                             BullMQ (Redis)
-                                  │
-                    ┌─────────────┴──────────────┐
-                    │                            │
-             apps/worker                  apps/action-worker
-             (build jobs)                 (CI jobs — Docker)
-                    │
-             apps/mercio-runtime
-             (function invocations — workerd)
-                    │
-             apps/mercob
-             (scheduled job poller)
+  │                                         │   GitHub webhooks
+  │              ┌──────────────────────────┤   CI orchestration
+  │              │                          │   REST API
+  │         apps/ws (:3002)             BullMQ (Redis)          POST /mcp ◄── MCP client
+  │         (WebSocket)                     │                        │         (Claude Code,
+  │    ┌─── real-time logs          ┌───────┴──────────┐            │          Claude Desktop)
+  │    │    & CI status ────────────┤                  │            ▼
+  │    └───────────────────────     apps/worker    apps/action-worker    apps/merci-sandbox-engine (:3003)
+  │                                 (build jobs)   (CI jobs — Docker)    └── docker run oven/bun:alpine
+  └── GitHub Webhooks ──► apps/api
+                                apps/mercio-runtime
+                                (function invocations — workerd)
+                                apps/mercob
+                                (scheduled job poller)
 
 Shared: PostgreSQL · Redis · Cloudflare R2
 ```
@@ -110,6 +113,9 @@ JWT_SECRET=<32+ random chars>
 WORKER_SECRET=<32+ random chars>
 ENV_ENCRYPTION_KEY=<64 hex chars>
 REDIS_HOST=localhost
+# Sandbox (shared secret between api and merci-sandbox-engine)
+SANDBOX_ENGINE_URL=http://localhost:3003
+SANDBOX_ENGINE_SECRET=<32+ random chars>
 ```
 
 Generate secrets:
@@ -129,12 +135,12 @@ cd packages/db && bunx prisma migrate dev
 
 ```bash
 # In separate terminals:
-bun run --filter apps/api dev            # :3001
-bun run --filter apps/ws dev             # :3002
-bun run --filter apps/merci-actions dev  # :3003
-bun run --filter apps/web dev            # :3000
-bun run --filter apps/action-worker dev  # CI worker (needs Docker)
-bun run --filter apps/worker dev         # build worker
+bun run --filter apps/api dev                    # :3001  (REST API + MCP server + CI webhook receiver)
+bun run --filter apps/ws dev                     # :3002  (WebSocket — build logs + CI run events)
+bun run --filter apps/web dev                    # :3000  (Next.js dashboard)
+bun run --filter apps/merci-sandbox-engine dev   # :3003  (Sandbox execution engine — needs Docker)
+bun run --filter apps/action-worker dev          # CI execution worker (needs Docker)
+bun run --filter apps/worker dev                 # static site build worker
 ```
 
 ---
@@ -186,14 +192,14 @@ Requires `ENV_ENCRYPTION_KEY` (64-char hex). Used for storing GitHub tokens and 
 ```
 mercy/
   apps/
-    api/                REST API (Express + Bun, :3001)
-    ws/                 WebSocket build-log streaming (:3002)
-    web/                Next.js frontend (:3000)
-    worker/             Static site build worker (BullMQ)
-    mercio-runtime/     Serverless function runtime (workerd)
-    mercob/             Scheduled job engine
-    merci-actions/      CI webhook receiver + orchestration (:3003)
-    action-worker/      CI Docker execution worker
+    api/                    REST API + MCP server + CI webhook receiver + orchestration (Express + Bun, :3001)
+    ws/                     WebSocket streaming — build logs + CI run events (:3002)
+    web/                    Next.js frontend (:3000)
+    worker/                 Static site build worker (BullMQ)
+    mercio-runtime/         Serverless function runtime (workerd)
+    mercob/                 Scheduled job engine
+    action-worker/          CI Docker execution worker
+    merci-sandbox-engine/   Sandbox code execution engine (Express + Bun, :3003)
   packages/
     db/                 Prisma schema + generated client
     logger/             Shared pino logger

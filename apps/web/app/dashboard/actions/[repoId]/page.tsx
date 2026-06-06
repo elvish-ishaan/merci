@@ -66,6 +66,14 @@ export default function RepoDetailPage() {
     fetchRuns(1)
   }, [fetchRepo, fetchRuns])
 
+  // Poll while any run on the current page is still active
+  useEffect(() => {
+    const hasActive = runs.some(r => r.status === 'QUEUED' || r.status === 'RUNNING')
+    if (!hasActive) return
+    const id = setInterval(() => fetchRuns(page), 3000)
+    return () => clearInterval(id)
+  }, [runs, page, fetchRuns])
+
   async function handleSyncWebhook() {
     setSyncing(true)
     try {

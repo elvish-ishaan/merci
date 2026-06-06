@@ -31,11 +31,12 @@ internal.post('/action-logs', requireWorkerAuth, async (req: Request, res: Respo
 
   const log = await prisma.actionLog.create({
     data: { stepId, line, stream: stream ?? 'stdout' },
+    select: { id: true, stream: true, step: { select: { job: { select: { runId: true } } } } },
   })
 
   await redisPub.publish(
-    `action:step:${stepId}`,
-    JSON.stringify({ type: 'log', id: log.id.toString(), line, stream: log.stream }),
+    `action:run:${log.step.job.runId}`,
+    JSON.stringify({ type: 'log', stepId, id: log.id.toString(), line, stream: log.stream }),
   )
 
   logger.debug({ stepId, stream }, 'action log received')
@@ -61,18 +62,19 @@ internal.patch('/action-steps/:stepId', requireWorkerAuth, async (req: Request, 
         ...(startedAt && { startedAt: new Date(startedAt) }),
         ...(completedAt && { completedAt: new Date(completedAt) }),
       },
-      select: { jobId: true },
+      select: { jobId: true, job: { select: { runId: true } } },
     })
 
     await redisPub.publish(
-      `action:step:${stepId}`,
-      JSON.stringify({ type: 'status', status, conclusion }),
+      `action:run:${step.job.runId}`,
+      JSON.stringify({ type: 'step-status', stepId, status, conclusion, startedAt, completedAt }),
     )
 
     logger.debug({ stepId, status }, 'step status updated')
     res.json({ ok: true, jobId: step.jobId })
-  } catch {
-    res.status(404).json({ error: 'Step not found' })
+  } catch (err) {
+    logger.error({ err, stepId }, 'failed to update step status')
+    res.status(500).json({ error: 'failed to update step' })
   }
 })
 
@@ -99,14 +101,15 @@ internal.patch('/action-jobs/:jobId', requireWorkerAuth, async (req: Request, re
     })
 
     await redisPub.publish(
-      `action:job:${jobId}`,
-      JSON.stringify({ type: 'status', status, conclusion }),
+      `action:run:${job.runId}`,
+      JSON.stringify({ type: 'job-status', jobId, status, conclusion, startedAt, completedAt }),
     )
 
     logger.debug({ jobId, status }, 'job status updated')
     res.json({ ok: true, runId: job.runId })
-  } catch {
-    res.status(404).json({ error: 'Job not found' })
+  } catch (err) {
+    logger.error({ err, jobId }, 'failed to update job status')
+    res.status(500).json({ error: 'failed to update job' })
   }
 })
 
@@ -133,13 +136,14 @@ internal.patch('/action-runs/:runId', requireWorkerAuth, async (req: Request, re
 
     await redisPub.publish(
       `action:run:${runId}`,
-      JSON.stringify({ type: 'status', status, conclusion }),
+      JSON.stringify({ type: 'run-status', status, conclusion, startedAt, completedAt }),
     )
 
     logger.debug({ runId, status }, 'run status updated')
     res.json({ ok: true })
-  } catch {
-    res.status(404).json({ error: 'Run not found' })
+  } catch (err) {
+    logger.error({ err, runId }, 'failed to update run status')
+    res.status(500).json({ error: 'failed to update run' })
   }
 })
 

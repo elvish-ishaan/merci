@@ -1,17 +1,17 @@
 import { Router, type Request, type Response } from 'express'
 import { nanoid } from 'nanoid'
 import prisma from '../lib/prisma'
-import { verifyWebhookSignature } from '../lib/hmac'
-import { fetchWorkflowFiles } from '../lib/github'
-import { parseWorkflow } from '../lib/yaml-parser'
+import { verifyWebhookSignature } from '../lib/actions-hmac'
+import { fetchWorkflowFiles } from '../lib/actions-github'
+import { parseWorkflow } from '../lib/actions-yaml-parser'
 import {
   matchesTrigger,
   buildContextFromPush,
   buildContextFromPullRequest,
   type PushPayload,
   type PullRequestPayload,
-} from '../lib/trigger'
-import { actionQueue } from '../lib/queue'
+} from '../lib/actions-trigger'
+import { actionQueue } from '../lib/actions-queue'
 import { decryptValue } from '@repo/crypto'
 import { logger } from '../lib/logger'
 
