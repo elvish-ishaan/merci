@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq'
 import { redisConnection } from './redis'
-import type { WorkflowStep } from './yaml-parser'
+import type { WorkflowStep } from './actions-yaml-parser'
 
 export interface ActionJobPayload {
   runId: string

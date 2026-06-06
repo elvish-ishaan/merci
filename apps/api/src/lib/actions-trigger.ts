@@ -1,4 +1,4 @@
-import type { NormalizedTriggers, TriggerFilter } from './yaml-parser'
+import type { NormalizedTriggers, TriggerFilter } from './actions-yaml-parser'
 
 function matchPattern(pattern: string, value: string): boolean {
   const regex = new RegExp(

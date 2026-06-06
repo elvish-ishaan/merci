@@ -11,6 +11,10 @@ import mercio from './src/routes/mercio'
 import mercioInvoke from './src/routes/mercio-invoke'
 import mercob from './src/routes/mercob'
 import mercobRuns from './src/routes/mercob-runs'
+import actionsWebhook from './src/routes/actions-webhook'
+import actionsRepos from './src/routes/actions-repos'
+import actionsRuns from './src/routes/actions-runs'
+import actionsInternal from './src/routes/actions-internal'
 import { subdomainMiddleware } from './src/middleware/subdomain'
 import prisma from './src/lib/prisma'
 import { logger } from './src/lib/logger'
@@ -22,6 +26,8 @@ const isDev = process.env['NODE_ENV'] !== 'production'
 const app = express()
 
 app.use(cors({ origin: '*' }))
+// Raw body required for GitHub webhook HMAC verification — must precede express.json()
+app.use('/webhook', express.raw({ type: 'application/json' }))
 app.use(express.json())
 app.use(pinoHttp({
   logger,
@@ -88,6 +94,11 @@ app.use('/api/mercob/jobs', mercob)
 app.use('/api/mercob/runs', mercobRuns)
 app.use('/mercio', mercioInvoke)
 app.use('/', github)
+
+app.use('/webhook', actionsWebhook)
+app.use('/api/repos', actionsRepos)
+app.use('/api/runs', actionsRuns)
+app.use('/internal', actionsInternal)
 
 const port = process.env.PORT ?? 3001
 app.listen(port, () => logger.info({ port }, 'API running'))

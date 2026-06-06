@@ -1,6 +1,6 @@
 import { logger } from './logger'
 
-const BASE = (process.env['MERCI_ACTIONS_INTERNAL_URL'] ?? 'http://localhost:3003').replace(/\/$/, '')
+const BASE = (process.env['MERCI_ACTIONS_INTERNAL_URL'] ?? 'http://localhost:3001').replace(/\/$/, '')
 const WORKER_SECRET = process.env['WORKER_SECRET'] ?? ''
 
 const authHeaders = {
@@ -25,13 +25,17 @@ async function patch(path: string, body: Record<string, unknown>) {
 
 export async function postLog(stepId: string, line: string, stream: 'stdout' | 'stderr') {
   try {
-    await fetch(`${BASE}/internal/action-logs`, {
+    const res = await fetch(`${BASE}/internal/action-logs`, {
       method: 'POST',
       headers: authHeaders,
       body: JSON.stringify({ stepId, line, stream }),
     })
-  } catch {
-    // non-fatal — dropped log line
+    if (!res.ok) {
+      // Surface auth/config failures instead of silently dropping every line
+      logger.warn({ stepId, status: res.status }, 'internal API postLog failed')
+    }
+  } catch (err) {
+    logger.warn({ err, stepId }, 'internal API postLog error')
   }
 }
 

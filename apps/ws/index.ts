@@ -1,5 +1,10 @@
 import { handleOpen, handleClose } from './src/handler'
+import { handleActionOpen, handleActionClose } from './src/actions-handler'
 import { logger } from './src/lib/logger'
+
+function isActionRun(rawUrl: string): boolean {
+  return new URL(rawUrl).pathname.startsWith('/actions/')
+}
 
 if (!process.env['JWT_SECRET']) throw new Error('JWT_SECRET env var is required')
 
@@ -14,10 +19,12 @@ Bun.serve<string>({
   },
   websocket: {
     async open(ws) {
-      await handleOpen(ws)
+      if (isActionRun(ws.data)) await handleActionOpen(ws)
+      else await handleOpen(ws)
     },
     close(ws) {
-      handleClose(ws)
+      if (isActionRun(ws.data)) handleActionClose(ws)
+      else handleClose(ws)
     },
     message() {
       // clients are read-only consumers; no inbound messages expected

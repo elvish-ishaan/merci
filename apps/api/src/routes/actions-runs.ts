@@ -3,9 +3,9 @@ import { nanoid } from 'nanoid'
 import prisma from '../lib/prisma'
 import { authMiddleware } from '../middleware/auth'
 import { decryptValue } from '@repo/crypto'
-import { fetchWorkflowFiles } from '../lib/github'
-import { parseWorkflow } from '../lib/yaml-parser'
-import { actionQueue } from '../lib/queue'
+import { fetchWorkflowFiles } from '../lib/actions-github'
+import { parseWorkflow } from '../lib/actions-yaml-parser'
+import { actionQueue } from '../lib/actions-queue'
 import { logger } from '../lib/logger'
 
 const runs = Router()
@@ -134,7 +134,8 @@ runs.get('/:runId/jobs/:jobId/steps/:stepId/logs', authMiddleware, async (req: R
     select: { id: true, line: true, stream: true, createdAt: true },
   })
 
-  res.json({ logs })
+  // ActionLog.id is a BigInt — Express's JSON serializer can't handle it, so cast to string
+  res.json({ logs: logs.map((l) => ({ ...l, id: l.id.toString() })) })
 })
 
 // Re-run a workflow at the same SHA

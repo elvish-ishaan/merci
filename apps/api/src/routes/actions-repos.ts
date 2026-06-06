@@ -2,13 +2,13 @@ import { Router, type Request, type Response } from 'express'
 import { nanoid } from 'nanoid'
 import prisma from '../lib/prisma'
 import { authMiddleware } from '../middleware/auth'
-import { registerWebhook, updateWebhookUrl, deleteWebhook } from '../lib/github'
+import { registerWebhook, updateWebhookUrl, deleteWebhook } from '../lib/actions-github'
 import { encryptValue, decryptValue } from '@repo/crypto'
 import { logger } from '../lib/logger'
 
 const repos = Router()
 
-const WEBHOOK_BASE_URL = (process.env['MERCI_ACTIONS_URL'] ?? 'http://localhost:3003').replace(/\/$/, '')
+const WEBHOOK_BASE_URL = (process.env['ACTIONS_WEBHOOK_BASE_URL'] ?? 'http://localhost:3001').replace(/\/$/, '')
 
 // ── Repos ──────────────────────────────────────────────────────────────────
 
@@ -102,8 +102,7 @@ repos.get('/:repoId', authMiddleware, async (req: Request, res: Response) => {
   res.json({ repo })
 })
 
-// Re-registers the webhook with the correct URL — useful when MERCI_ACTIONS_URL changes
-// or to fix repos registered before the bug fix
+// Re-registers the webhook with the correct URL — useful when ACTIONS_WEBHOOK_BASE_URL changes
 repos.post('/:repoId/webhook/sync', authMiddleware, async (req: Request, res: Response) => {
   const userId = res.locals['userId'] as string
   const { repoId } = req.params
@@ -128,11 +127,9 @@ repos.post('/:repoId/webhook/sync', authMiddleware, async (req: Request, res: Re
 
   try {
     if (repo.webhookId) {
-      // Update the existing webhook URL
       await updateWebhookUrl(repo.repoFullName, repo.webhookId, webhookUrl, githubToken)
       logger.info({ repoId, webhookId: repo.webhookId, webhookUrl }, 'webhook URL updated')
     } else {
-      // No webhook yet — create one
       const webhookId = await registerWebhook(repo.repoFullName, webhookUrl, repo.webhookSecret, githubToken)
       await prisma.actionRepo.update({ where: { id: repo.id }, data: { webhookId } })
       logger.info({ repoId, webhookId, webhookUrl }, 'webhook registered')
