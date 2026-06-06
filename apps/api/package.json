@@ -24,7 +24,9 @@
     "multer": "^2.1.1",
     "nanoid": "^5.1.9",
     "simple-git": "^3.27.0",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

@@ -19,6 +19,20 @@ model User {
   githubId          String?          @unique
   githubAccessToken String?
   actionRepos       ActionRepo[]
+  sandboxApiKeys    SandboxApiKey[]
+}
+
+model SandboxApiKey {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  keyHash    String    @unique
+  keyPrefix  String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  @@index([userId])
 }
 
 model Project {

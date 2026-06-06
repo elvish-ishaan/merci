@@ -71,6 +71,8 @@ services:
       WORKER_SECRET: ${WORKER_SECRET}
       BASE_DOMAIN: app.${APP_DOMAIN}
       ACTIONS_WEBHOOK_BASE_URL: https://api.${APP_DOMAIN}
+      SANDBOX_ENGINE_URL: http://merci-sandbox-engine:3003
+      SANDBOX_ENGINE_SECRET: ${SANDBOX_ENGINE_SECRET}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -155,6 +157,19 @@ services:
         condition: service_healthy
       api:
         condition: service_started
+    networks:
+      - merci
+
+  merci-sandbox-engine:
+    image: elvishishaan/merci-sandbox-engine:latest
+    restart: unless-stopped
+    environment:
+      PORT: 3003
+      SANDBOX_IMAGE: ${SANDBOX_IMAGE:-oven/bun:alpine}
+      SANDBOX_ENGINE_SECRET: ${SANDBOX_ENGINE_SECRET}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp
     networks:
       - merci
 
