@@ -36,13 +36,21 @@ bun run lint         # ESLint
 # apps/web/.env.local
 NEXT_PUBLIC_API_URL=http://localhost:3001
 NEXT_PUBLIC_WS_URL=ws://localhost:3002
-NEXT_PUBLIC_ACTIONS_URL=http://localhost:3003
 ```
 
 ## Real-time updates
 
-The run detail page polls `merci-actions` while a run is active:
-- Run + job statuses refresh every **3 seconds**
-- Step statuses refresh every **2 seconds** when the job row is expanded
-- Step logs refresh every **2 seconds** when the step row is expanded, with auto-scroll to the latest line
-- Polling stops automatically once the run reaches a terminal state (`SUCCEEDED`, `FAILED`, `CANCELLED`)
+### Static deployment logs
+`/dashboard/projects/[id]/logs` connects to the `ws` service at `NEXT_PUBLIC_WS_URL/<projectId>?token=…`. Historical logs are replayed on connect; new lines stream live until the build completes.
+
+### CI run detail (`/dashboard/actions/[repoId]/runs/[runId]`)
+Opens a single WebSocket to `NEXT_PUBLIC_WS_URL/actions/<runId>?token=…`. The `ws` service verifies ownership, replays current run/job/step status from the database, then forwards live events from Redis as the worker progresses:
+
+| Event type | What updates |
+|---|---|
+| `run-status` | Top-level status badge + duration |
+| `job-status` | Per-job status badge + duration |
+| `step-status` | Per-step status badge + timestamps inside an expanded job |
+| `log` | New log line appended to an expanded step's log panel |
+
+The WebSocket connection is opened once per page visit and stays open until the page unmounts. A "Live" indicator (pulsing green dot) is shown while the run is active and the socket is connected. Step logs are initially loaded over HTTP when a step row is expanded; subsequent lines arrive over the same run socket without polling.
