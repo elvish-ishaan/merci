@@ -16,6 +16,9 @@ The REST API service for Mercy. Built with Express.js running on Bun (port 3001)
 | `/webhook` | GitHub webhook receiver — validates HMAC, triggers CI runs |
 | `/api/repos` | CI repo registration, webhook sync, secret management |
 | `/api/runs` | CI run list, run detail, job detail, step logs, re-run |
+| `/api/sandbox/keys` | Sandbox API key CRUD (list, create, revoke) — JWT auth |
+| `/api/sandbox/execute` | Execute JS/TS code via REST (SDK-facing) — JWT auth |
+| `/mcp` | Remote MCP server (`POST`/`GET`/`DELETE`) — Sandbox API key Bearer auth |
 | `/internal` | Worker-only endpoints (build logs, action logs, status patches for steps/jobs/runs) |
 | `/` | GitHub OAuth callback + repo listing |
 
@@ -48,6 +51,8 @@ bun test      # run tests (bun:test + supertest, ~155 tests across 12 files)
 | `WEBHOOK_SECRET` | yes | GitHub webhook HMAC secret |
 | `BASE_DOMAIN` | no | Apex domain for subdomain routing + Caddy TLS check |
 | `PORT` | no | HTTP listen port (default 3001) |
+| `SANDBOX_ENGINE_URL` | yes | Base URL of `merci-sandbox-engine` (e.g. `http://localhost:3003`) |
+| `SANDBOX_ENGINE_SECRET` | yes | Shared secret for engine auth — **must match `SANDBOX_ENGINE_SECRET` in merci-sandbox-engine** |
 
 ## Internal API — CI callbacks
 
