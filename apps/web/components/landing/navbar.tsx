@@ -1,18 +1,21 @@
 'use client'
 
+import type React from 'react'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { Menu, X, ChevronDown, GitBranch, Zap, Clock } from 'lucide-react'
+import { Menu, X, ChevronDown, GitBranch, Zap, Clock, GitPullRequest, Bot } from 'lucide-react'
 import { Logo } from './logo'
 import { CtaButton } from './cta-button'
 import { navLinks, productLinks } from './nav-links'
 import { GithubIcon } from './github-icon'
 
-const productIcons = {
+const productIcons: Record<string, React.ReactNode> = {
   Deployments: <GitBranch className="h-4 w-4" />,
   Mercio: <Zap className="h-4 w-4" />,
   Mercob: <Clock className="h-4 w-4" />,
-} as const
+  'Merci Actions': <GitPullRequest className="h-4 w-4" />,
+  'Merci Sandbox': <Bot className="h-4 w-4" />,
+}
 
 export function Navbar() {
   const [open, setOpen] = useState(false)
@@ -66,19 +69,19 @@ export function Navbar() {
             <div className="invisible absolute top-[calc(100%+12px)] left-1/2 -translate-x-1/2 opacity-0 transition-all duration-150 group-hover:visible group-hover:opacity-100">
               {/* bridge keeps hover active while moving cursor from button to panel */}
               <div className="absolute -top-3 left-0 h-3 w-full" />
-              <div className="w-[680px] overflow-hidden rounded-xl border border-brand-border bg-brand-surface shadow-[0_16px_48px_-8px_rgba(0,0,0,0.7)]">
+              <div className="w-[720px] overflow-hidden rounded-xl border border-brand-border bg-brand-surface shadow-[0_16px_48px_-8px_rgba(0,0,0,0.7)]">
                 <div className="border-b border-brand-border px-6 py-4">
                   <p className="font-mono-brand text-xs text-brand-fg-muted">Products</p>
                 </div>
-                <div className="grid grid-cols-3 divide-x divide-brand-border">
+                <div className="grid grid-cols-3 gap-px bg-brand-border">
                   {productLinks.map((product) => (
                     <Link
                       key={product.name}
                       href={product.href}
-                      className="flex flex-col gap-3 p-6 transition-colors hover:bg-brand-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-accent"
+                      className="flex flex-col gap-3 bg-brand-surface p-6 transition-colors hover:bg-brand-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-accent"
                     >
                       <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-brand-border bg-brand-bg text-brand-accent">
-                        {productIcons[product.name as keyof typeof productIcons]}
+                        {productIcons[product.name]}
                       </span>
                       <div>
                         <p className="font-mono-brand text-sm font-semibold text-brand-fg-strong">
@@ -91,6 +94,9 @@ export function Navbar() {
                       </span>
                     </Link>
                   ))}
+                  {productLinks.length % 3 === 2 && (
+                    <div className="bg-brand-surface" aria-hidden />
+                  )}
                 </div>
               </div>
             </div>
@@ -162,7 +168,7 @@ export function Navbar() {
                       className="flex items-center gap-3 rounded-md px-2 py-2.5 transition-colors hover:bg-brand-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-accent"
                     >
                       <span className="inline-flex h-7 w-7 items-center justify-center rounded border border-brand-border bg-brand-bg text-brand-accent">
-                        {productIcons[product.name as keyof typeof productIcons]}
+                        {productIcons[product.name]}
                       </span>
                       <div>
                         <p className="font-mono-brand text-sm text-brand-fg-strong">{product.name}</p>

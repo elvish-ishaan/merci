@@ -28,7 +28,7 @@ const features = [
   {
     icon: <Box className="h-4 w-4" />,
     title: 'Zero-config builds',
-    body: 'No Dockerfiles or build scripts to write. Mercy detects your project and gets to work.',
+    body: 'No build scripts to write. Mercy detects your project type and gets to work automatically.',
   },
   {
     icon: <Radio className="h-4 w-4" />,

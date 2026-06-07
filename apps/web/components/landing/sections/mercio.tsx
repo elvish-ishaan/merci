@@ -8,32 +8,32 @@ const features = [
   {
     icon: <Code2 className="h-4 w-4" />,
     title: 'Write how you want',
-    body: 'Use a simple function or bring in a full Hono app for routing and middleware — either style works out of the box.',
+    body: 'Use a simple function handler or a full app with routing and middleware — both work out of the box.',
   },
   {
     icon: <Link2 className="h-4 w-4" />,
     title: 'Instant public URL',
-    body: 'Every function gets its own live endpoint the moment it deploys. Share it, hit it, automate it.',
+    body: 'Every function gets its own live endpoint the moment it deploys. Share it, call it, automate it.',
   },
   {
     icon: <Flame className="h-4 w-4" />,
-    title: 'Fast responses',
-    body: 'Functions stay ready so the first request doesn\'t feel slow. Active endpoints respond without noticeable delay.',
+    title: 'Always-on endpoints',
+    body: 'Functions stay ready between requests so users never feel a cold start. Your endpoint is live the moment you need it.',
   },
   {
     icon: <Shield className="h-4 w-4" />,
     title: 'Complete isolation',
-    body: 'Every function runs in its own sandbox. What happens in one deployment can\'t affect another.',
+    body: 'Every function runs in its own protected environment. One deployment can never affect another.',
   },
   {
     icon: <Package className="h-4 w-4" />,
-    title: 'Use any npm package',
-    body: 'Import whatever libraries you need. Mercy bundles everything into a single deployable file.',
+    title: 'Use any package',
+    body: 'Import whatever libraries you need. Mercy bundles everything so your function just works.',
   },
   {
     icon: <Radio className="h-4 w-4" />,
     title: 'Live deploy status',
-    body: 'Watch your function go from uploaded to live, step by step, in the dashboard.',
+    body: 'Watch your function go from uploaded to live, step by step, right in the dashboard.',
   },
 ]
 

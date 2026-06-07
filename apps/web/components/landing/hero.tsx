@@ -11,15 +11,15 @@ export function Hero() {
             <span className="text-brand-accent">~/</span>mercy
           </div>
           <h1 className="font-mono-brand text-4xl leading-[1.1] tracking-tight text-brand-fg-strong sm:text-5xl md:text-6xl">
-            Ship sites.
+            Build, Deploy and Run
             <br />
-            Run functions.
+            on the
             <br />
-            <span className="text-brand-fg-muted">Schedule everything.</span>
+            <span className="text-brand-accent">AI-Native Cloud.</span>
           </h1>
           <p className="mt-6 max-w-xl text-base text-brand-fg-subtle md:text-lg">
-            Mercy connects your repo, runs your code, and watches every run —
-            without the yaml, the clusters, or the ops.
+            The developer tools and cloud infrastructure to build, scale, and
+            secure a faster, more personalized web.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
             <CtaButton href="/register" variant="brand">
