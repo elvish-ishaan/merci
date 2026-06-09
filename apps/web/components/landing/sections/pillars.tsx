@@ -1,224 +1,266 @@
 import type { ComponentType } from 'react'
 import { SectionHeading } from '@/components/landing/primitives/section-heading'
 
-function MercobVisual() {
-  const runs: { time: string; ok: boolean; duration: string }[] = [
-    { time: 'Today  06:00', ok: true,  duration: '0.3s' },
-    { time: 'Today  00:00', ok: true,  duration: '0.4s' },
-    { time: 'Yest.  18:00', ok: true,  duration: '0.3s' },
-    { time: 'Yest.  12:00', ok: false, duration: 'timeout' },
-    { time: 'Yest.  06:00', ok: true,  duration: '0.2s' },
+function GlobeVisual() {
+  return (
+    <div className="flex flex-1 items-center justify-center py-6" aria-hidden="true">
+      <svg viewBox="0 0 280 280" className="w-full max-w-[300px]" fill="none">
+        <circle cx="140" cy="140" r="100" stroke="#222222" strokeWidth="1.5" fill="#0A0A0A" />
+        {/* Latitude lines */}
+        <ellipse cx="140" cy="140" rx="100" ry="28" stroke="#222222" strokeWidth="1" />
+        <ellipse cx="140" cy="100" rx="84" ry="22" stroke="#222222" strokeWidth="1" />
+        <ellipse cx="140" cy="180" rx="84" ry="22" stroke="#222222" strokeWidth="1" />
+        {/* Longitude arcs */}
+        <path d="M140 40 C182 67 182 213 140 240" stroke="#222222" strokeWidth="1" />
+        <path d="M140 40 C98 67 98 213 140 240" stroke="#222222" strokeWidth="1" />
+        {/* Glow halos */}
+        <circle cx="96"  cy="123" r="15" fill="#FF6A2A" opacity="0.12" />
+        <circle cx="193" cy="131" r="15" fill="#FF6A2A" opacity="0.12" />
+        <circle cx="140" cy="187" r="15" fill="#FF6A2A" opacity="0.12" />
+        <circle cx="165" cy="95"  r="15" fill="#FF6A2A" opacity="0.12" />
+        {/* Server nodes */}
+        <circle cx="96"  cy="123" r="7" fill="#FF6A2A" />
+        <circle cx="193" cy="131" r="7" fill="#FF6A2A" />
+        <circle cx="140" cy="187" r="7" fill="#FF6A2A" />
+        <circle cx="165" cy="95"  r="7" fill="#FF6A2A" />
+        {/* Connection lines */}
+        <line x1="96"  y1="123" x2="193" y2="131" stroke="#FF6A2A" strokeWidth="1.5" strokeDasharray="5 4" opacity="0.5" />
+        <line x1="193" y1="131" x2="140" y2="187" stroke="#FF6A2A" strokeWidth="1.5" strokeDasharray="5 4" opacity="0.5" />
+        <line x1="96"  y1="123" x2="165" y2="95"  stroke="#FF6A2A" strokeWidth="1.5" strokeDasharray="5 4" opacity="0.5" />
+        <line x1="165" y1="95"  x2="193" y2="131" stroke="#FF6A2A" strokeWidth="1.5" strokeDasharray="5 4" opacity="0.5" />
+      </svg>
+    </div>
+  )
+}
+
+function FunctionVisual() {
+  return (
+    <div className="flex flex-1 items-center justify-center py-6" aria-hidden="true">
+      <svg viewBox="0 0 280 280" className="w-full max-w-[300px]" fill="none">
+        {/* Incoming request node */}
+        <circle cx="38" cy="140" r="20" stroke="#222222" strokeWidth="1.5" fill="#111111" />
+        <text x="38" y="144" textAnchor="middle" fill="#A1A1A1" fontSize="10" fontFamily="monospace">req</text>
+        {/* Arrow to function */}
+        <line x1="58" y1="140" x2="90" y2="140" stroke="#A1A1A1" strokeWidth="1.5" strokeDasharray="4 3" />
+        <path d="M86 134 L94 140 L86 146" stroke="#A1A1A1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Function glow + ring */}
+        <circle cx="140" cy="140" r="44" fill="#FF6A2A" opacity="0.05" />
+        <circle cx="140" cy="140" r="34" stroke="#FF6A2A" strokeWidth="1.5" fill="#0A0A0A" />
+        <text x="140" y="150" textAnchor="middle" fill="#FF6A2A" fontSize="28" fontFamily="monospace">λ</text>
+        {/* Arrows out */}
+        <line x1="174" y1="124" x2="208" y2="94"  stroke="#A1A1A1" strokeWidth="1.5" strokeDasharray="4 3" />
+        <line x1="174" y1="140" x2="208" y2="140" stroke="#A1A1A1" strokeWidth="1.5" strokeDasharray="4 3" />
+        <line x1="174" y1="156" x2="208" y2="186" stroke="#A1A1A1" strokeWidth="1.5" strokeDasharray="4 3" />
+        {/* Response nodes */}
+        <circle cx="226" cy="94"  r="17" stroke="#FF6A2A" strokeWidth="1.5" fill="#111111" />
+        <text x="226" y="98"  textAnchor="middle" fill="#FF6A2A" fontSize="10" fontFamily="monospace">200</text>
+        <circle cx="226" cy="140" r="17" stroke="#222222" strokeWidth="1.5" fill="#111111" />
+        <text x="226" y="144" textAnchor="middle" fill="#A1A1A1" fontSize="10" fontFamily="monospace">201</text>
+        <circle cx="226" cy="186" r="17" stroke="#222222" strokeWidth="1.5" fill="#111111" />
+        <text x="226" y="190" textAnchor="middle" fill="#A1A1A1" fontSize="10" fontFamily="monospace">404</text>
+        {/* Label */}
+        <text x="140" y="222" textAnchor="middle" fill="#A1A1A1" fontSize="12" fontFamily="monospace">handler.ts</text>
+      </svg>
+    </div>
+  )
+}
+
+function PipelineVisual() {
+  const stages: { label: string; status: 'done' | 'running' | 'pending' }[] = [
+    { label: 'checkout', status: 'done' },
+    { label: 'install',  status: 'done' },
+    { label: 'build',    status: 'running' },
+    { label: 'test',     status: 'pending' },
+    { label: 'deploy',   status: 'pending' },
   ]
 
   return (
-    <div className="flex flex-1 flex-col justify-center py-8" aria-hidden="true">
-      <div className="mb-4 flex items-center gap-2">
-        <span className="font-mono-brand text-[10px] text-brand-fg-muted">SCHEDULE</span>
-        <code className="rounded border border-brand-border bg-brand-surface-2 px-2 py-0.5 font-mono-brand text-[11px] text-brand-fg">
-          0 */6 * * *
-        </code>
-      </div>
-      <div className="mb-3 h-px bg-brand-border" />
-      <div className="space-y-2.5">
-        {runs.map((run) => (
-          <div key={run.time} className="flex items-center gap-3">
-            <span
-              className={
-                run.ok
-                  ? 'font-mono-brand text-xs text-brand-accent'
-                  : 'font-mono-brand text-xs text-brand-fg-muted opacity-40'
-              }
-            >
-              {run.ok ? '✓' : '✗'}
-            </span>
-            <span className="font-mono-brand text-[11px] text-brand-fg-muted">{run.time}</span>
-            <span
-              className={
-                run.ok
-                  ? 'ml-auto font-mono-brand text-[10px] text-brand-fg-muted'
-                  : 'ml-auto font-mono-brand text-[10px] text-brand-fg-muted opacity-40'
-              }
-            >
-              {run.duration}
-            </span>
-          </div>
+    <div className="flex flex-1 items-center justify-center py-6" aria-hidden="true">
+      <svg viewBox="0 0 300 160" className="w-full max-w-[360px]" fill="none">
+        {stages.map((stage, i) => {
+          const x = 30 + i * 60
+          const y = 70
+          const done    = stage.status === 'done'
+          const running = stage.status === 'running'
+          return (
+            <g key={stage.label}>
+              {i > 0 && (
+                <line
+                  x1={x - 44} y1={y}
+                  x2={x - 16} y2={y}
+                  stroke={stages[i - 1].status === 'done' ? '#FF6A2A' : '#222222'}
+                  strokeWidth="2"
+                />
+              )}
+              {(done || running) && <circle cx={x} cy={y} r="24" fill="#FF6A2A" opacity="0.08" />}
+              <circle
+                cx={x} cy={y} r="16"
+                fill={done ? '#FF6A2A' : '#0A0A0A'}
+                stroke={done || running ? '#FF6A2A' : '#222222'}
+                strokeWidth="1.5"
+              />
+              {done && (
+                <path
+                  d={`M${x - 7} ${y + 1} L${x - 2} ${y + 7} L${x + 7} ${y - 6}`}
+                  stroke="#000"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+              {running && <circle cx={x} cy={y} r="5.5" fill="#FF6A2A" />}
+              <text
+                x={x} y={y + 34}
+                textAnchor="middle"
+                fill="#A1A1A1"
+                fontSize="10"
+                fontFamily="monospace"
+              >
+                {stage.label}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+    </div>
+  )
+}
+
+function ClockVisual() {
+  const cx = 140
+  const cy = 140
+  const ticks = Array.from({ length: 12 }, (_, i) => {
+    const angle = (i * 30 - 90) * (Math.PI / 180)
+    const r1 = 82
+    const r2 = i % 3 === 0 ? 96 : 90
+    return {
+      x1: cx + r1 * Math.cos(angle),
+      y1: cy + r1 * Math.sin(angle),
+      x2: cx + r2 * Math.cos(angle),
+      y2: cy + r2 * Math.sin(angle),
+      major: i % 3 === 0,
+    }
+  })
+
+  return (
+    <div className="flex flex-1 items-center justify-center py-6" aria-hidden="true">
+      <svg viewBox="0 0 280 280" className="w-full max-w-[300px]" fill="none">
+        {/* Outer orbit ring */}
+        <circle cx={cx} cy={cy} r="118" stroke="#FF6A2A" strokeWidth="1" strokeDasharray="6 5" opacity="0.25" />
+        {/* Orbit arrow head at top */}
+        <path d={`M${cx} 22 L${cx + 9} 32 M${cx} 22 L${cx - 9} 32`} stroke="#FF6A2A" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+        {/* Clock face */}
+        <circle cx={cx} cy={cy} r="100" stroke="#222222" strokeWidth="1.5" fill="#0A0A0A" />
+        {/* Ticks */}
+        {ticks.map((t, i) => (
+          <line
+            key={i}
+            x1={t.x1} y1={t.y1}
+            x2={t.x2} y2={t.y2}
+            stroke={t.major ? '#EAEAEA' : '#333333'}
+            strokeWidth={t.major ? 2.5 : 1.5}
+            strokeLinecap="round"
+          />
         ))}
-      </div>
+        {/* Minute hand — 12 o'clock */}
+        <line x1={cx} y1={cy} x2={cx} y2={cy - 78} stroke="#EAEAEA" strokeWidth="2" strokeLinecap="round" />
+        {/* Hour hand — 3 o'clock */}
+        <line x1={cx} y1={cy} x2={cx + 58} y2={cy} stroke="#EAEAEA" strokeWidth="3" strokeLinecap="round" />
+        {/* Center dot */}
+        <circle cx={cx} cy={cy} r="7" fill="#FF6A2A" />
+        <circle cx={cx} cy={cy} r="3.5" fill="#050505" />
+      </svg>
     </div>
   )
 }
 
 function SandboxVisual() {
-  return (
-    <div className="flex flex-1 items-end pb-8 pt-10" aria-hidden="true">
-      <div className="w-full overflow-hidden rounded-lg border border-brand-border bg-brand-bg-elev">
-        <div className="flex items-center justify-between border-b border-brand-border px-3 py-2">
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-brand-border" />
-            <span className="h-2 w-2 rounded-full bg-brand-border" />
-            <span className="h-2 w-2 rounded-full bg-brand-border" />
-            <span className="ml-2 font-mono-brand text-[10px] text-brand-fg-muted">merci-sandbox</span>
-          </div>
-          <div className="flex items-center gap-1 rounded-full border border-brand-accent/40 bg-brand-accent/10 px-2 py-0.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-brand-accent" />
-            <span className="font-mono-brand text-[9px] text-brand-accent">isolated</span>
-          </div>
-        </div>
-        <div className="flex flex-col lg:flex-row">
-          <div className="flex-1 space-y-1 p-4 font-mono-brand text-[11px]">
-            <p className="mb-2 text-brand-fg-muted">{'// AI-generated code'}</p>
-            <p className="text-brand-fg-muted">
-              <span className="text-brand-fg">const</span> resp{' '}
-              <span className="text-brand-fg-muted">=</span>{' '}
-              <span className="text-brand-fg">await</span> fetch(url)
-            </p>
-            <p className="text-brand-fg-muted">
-              <span className="text-brand-fg">const</span> data{' '}
-              <span className="text-brand-fg-muted">=</span> await resp.json()
-            </p>
-            <p className="text-brand-fg-muted">
-              <span className="text-brand-fg">return</span> data.items.length
-            </p>
-          </div>
-          <div className="w-px bg-brand-border lg:block hidden" />
-          <div className="flex-1 border-t border-brand-border p-4 font-mono-brand text-[11px] lg:border-t-0">
-            <p className="mb-2 text-brand-fg-muted">{'→ output'}</p>
-            <p className="text-brand-fg-strong">42</p>
-            <div className="mt-3 space-y-1">
-              <p className="text-brand-accent">✓ Executed in 48ms</p>
-              <p className="text-brand-accent">✓ JS / TS supported</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+  // Isometric box — 30° projection, W=D=120, H=95
+  // i_vec=(-104,60) j_vec=(104,60) h_vec=(0,-95)
+  const A = { x: 220, y: 165 } // front-bottom
+  const B = { x: 324, y: 225 } // right-bottom
+  const C = { x: 220, y: 285 } // back-bottom
+  const D = { x: 116, y: 225 } // left-bottom
+  const E = { x: 220, y: 70  } // front-top
+  const F = { x: 324, y: 130 } // right-top
+  const G = { x: 220, y: 190 } // back-top
+  const H = { x: 116, y: 130 } // left-top
 
-function DeployVisual() {
-  return (
-    <div className="flex flex-1 items-end justify-center pb-8 pt-10" aria-hidden="true">
-      <div className="w-full max-w-[280px] overflow-hidden rounded-lg border border-brand-border bg-brand-bg-elev">
-        <div className="flex items-center gap-1.5 border-b border-brand-border px-3 py-2">
-          <span className="h-2 w-2 rounded-full bg-brand-border" />
-          <span className="h-2 w-2 rounded-full bg-brand-border" />
-          <span className="h-2 w-2 rounded-full bg-brand-border" />
-          <span className="ml-2 font-mono-brand text-[10px] text-brand-fg-muted">terminal</span>
-        </div>
-        <div className="space-y-1.5 p-4 font-mono-brand text-[11px]">
-          <p className="text-brand-fg-muted">
-            <span className="text-brand-accent">$</span> git push origin main
-          </p>
-          <p className="text-brand-fg-muted">Compressing objects: 100%</p>
-          <p className="text-brand-fg-muted">Writing objects: 100%</p>
-          <div className="mt-3 space-y-1.5">
-            <p className="text-brand-accent">✓ Build complete · 8.2s</p>
-            <p className="text-brand-accent">✓ SSL provisioned</p>
-            <p className="mt-1 text-brand-fg-muted">
-              {'→ '}<span className="text-brand-fg-strong">your-app.mercy.dev</span>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function MercioVisual() {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 py-10" aria-hidden="true">
-      <div className="flex items-center gap-3 rounded-lg border border-brand-border bg-brand-surface-2 px-5 py-3">
-        <svg
-          viewBox="0 0 24 24"
-          className="h-5 w-5 shrink-0 text-brand-fg-muted"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="16" y1="13" x2="8" y2="13" />
-          <line x1="16" y1="17" x2="8" y2="17" />
-          <polyline points="10 9 9 9 8 9" />
-        </svg>
-        <span className="font-mono-brand text-sm text-brand-fg">handler.ts</span>
-      </div>
-
-      <div className="flex flex-col items-center gap-1">
-        <div className="h-6 w-px bg-brand-border" />
-        <span className="rounded-full border border-brand-border px-2 py-0.5 font-mono-brand text-[10px] text-brand-fg-muted">
-          mercio deploy
-        </span>
-        <div className="h-6 w-px bg-brand-border" />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 rounded-full border border-brand-accent bg-brand-accent/10 px-4 py-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand-accent" />
-          <span className="font-mono-brand text-xs text-brand-accent">POST /api/handler</span>
-        </div>
-        <div className="flex items-center gap-2 rounded-full border border-brand-accent bg-brand-accent/10 px-4 py-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand-accent" />
-          <span className="font-mono-brand text-xs text-brand-accent">GET /api/handler</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ActionsVisual() {
-  const stages: { label: string; status: 'done' | 'running' | 'pending'; duration?: string }[] = [
-    { label: 'CHECKOUT', status: 'done', duration: '0.8s' },
-    { label: 'INSTALL', status: 'done', duration: '12.4s' },
-    { label: 'BUILD', status: 'running' },
-    { label: 'TEST', status: 'pending' },
-    { label: 'DEPLOY', status: 'pending' },
-  ]
+  const pts = (...vs: { x: number; y: number }[]) =>
+    vs.map(v => `${v.x},${v.y}`).join(' ')
 
   return (
-    <div className="flex flex-1 flex-col justify-center gap-3 px-2 py-10" aria-hidden="true">
-      {stages.map((stage, i) => (
-        <div key={stage.label} className="flex items-center gap-3">
-          {i > 0 && (
-            <div className="absolute ml-2 -mt-5 h-3 w-px bg-brand-border" />
-          )}
-          <div
-            className={
-              stage.status === 'done'
-                ? 'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-brand-accent bg-brand-accent/20'
-                : stage.status === 'running'
-                  ? 'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-brand-fg-muted bg-brand-surface-2'
-                  : 'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-brand-border bg-brand-surface-2'
-            }
-          >
-            {stage.status === 'done' && (
-              <span className="text-[8px] font-bold leading-none text-brand-accent">✓</span>
-            )}
-            {stage.status === 'running' && (
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-fg-muted" />
-            )}
-          </div>
+    <div className="flex flex-1 items-center justify-center py-4" aria-hidden="true">
+      <svg viewBox="0 0 440 320" className="w-full max-w-[360px]" fill="none">
+        <defs>
+          <filter id="iso-glow" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="5" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
 
-          <span
-            className={
-              stage.status === 'done'
-                ? 'font-mono-brand text-xs text-brand-fg'
-                : stage.status === 'running'
-                  ? 'font-mono-brand text-xs text-brand-fg-strong'
-                  : 'font-mono-brand text-xs text-brand-fg-muted'
-            }
-          >
-            {stage.label}
-          </span>
+        {/* ── Isometric floor grid ── */}
+        <polygon points="220,45 324,105 220,165 116,105"  fill="#0C0C0C" stroke="#1B1B1B" strokeWidth="0.75" />
+        <polygon points="324,105 428,165 324,225 220,165" fill="#0A0A0A" stroke="#191919" strokeWidth="0.75" />
+        <polygon points="116,105 220,165 116,225 12,165"  fill="#0A0A0A" stroke="#191919" strokeWidth="0.75" />
+        <polygon points={pts(A, B, C, D)}                 fill="#090909" stroke="#181818" strokeWidth="0.75" />
+        <polygon points="324,225 428,285 324,345 220,285" fill="#080808" stroke="#161616" strokeWidth="0.75" />
+        <polygon points="116,225 220,285 116,345 12,285"  fill="#080808" stroke="#161616" strokeWidth="0.75" />
 
-          <span className="ml-auto font-mono-brand text-[10px] text-brand-fg-muted">
-            {stage.status === 'done' && stage.duration}
-            {stage.status === 'running' && 'running…'}
-          </span>
-        </div>
-      ))}
+        {/* ── Very subtle face tints for depth ── */}
+        <polygon points={pts(E, F, G, H)} fill="#FF6A2A" fillOpacity="0.055" />
+        <polygon points={pts(A, B, F, E)} fill="#FF6A2A" fillOpacity="0.028" />
+        <polygon points={pts(A, D, H, E)} fill="#FF6A2A" fillOpacity="0.028" />
+
+        {/* ── Glow bloom layer ── */}
+        <g filter="url(#iso-glow)" stroke="#FF6A2A" strokeLinecap="round">
+          {/* Top edges */}
+          <line x1={E.x} y1={E.y} x2={F.x} y2={F.y} strokeWidth="4" strokeOpacity="0.65" />
+          <line x1={F.x} y1={F.y} x2={G.x} y2={G.y} strokeWidth="4" strokeOpacity="0.65" />
+          <line x1={G.x} y1={G.y} x2={H.x} y2={H.y} strokeWidth="4" strokeOpacity="0.65" />
+          <line x1={H.x} y1={H.y} x2={E.x} y2={E.y} strokeWidth="4" strokeOpacity="0.65" />
+          {/* Front visible edges */}
+          <line x1={A.x} y1={A.y} x2={B.x} y2={B.y} strokeWidth="4" strokeOpacity="0.65" />
+          <line x1={A.x} y1={A.y} x2={D.x} y2={D.y} strokeWidth="4" strokeOpacity="0.65" />
+          <line x1={A.x} y1={A.y} x2={E.x} y2={E.y} strokeWidth="4" strokeOpacity="0.65" />
+          <line x1={B.x} y1={B.y} x2={F.x} y2={F.y} strokeWidth="4" strokeOpacity="0.65" />
+          <line x1={D.x} y1={D.y} x2={H.x} y2={H.y} strokeWidth="4" strokeOpacity="0.65" />
+          {/* Hidden back edges — dim */}
+          <line x1={B.x} y1={B.y} x2={C.x} y2={C.y} strokeWidth="2.5" strokeOpacity="0.18" />
+          <line x1={D.x} y1={D.y} x2={C.x} y2={C.y} strokeWidth="2.5" strokeOpacity="0.18" />
+          <line x1={C.x} y1={C.y} x2={G.x} y2={G.y} strokeWidth="2.5" strokeOpacity="0.18" />
+        </g>
+
+        {/* ── Crisp edge lines on top ── */}
+        <g stroke="#FF6A2A" strokeLinecap="round">
+          <line x1={E.x} y1={E.y} x2={F.x} y2={F.y} strokeWidth="1.5" />
+          <line x1={F.x} y1={F.y} x2={G.x} y2={G.y} strokeWidth="1.5" />
+          <line x1={G.x} y1={G.y} x2={H.x} y2={H.y} strokeWidth="1.5" />
+          <line x1={H.x} y1={H.y} x2={E.x} y2={E.y} strokeWidth="1.5" />
+          <line x1={A.x} y1={A.y} x2={B.x} y2={B.y} strokeWidth="1.5" />
+          <line x1={A.x} y1={A.y} x2={D.x} y2={D.y} strokeWidth="1.5" />
+          <line x1={A.x} y1={A.y} x2={E.x} y2={E.y} strokeWidth="1.5" />
+          <line x1={B.x} y1={B.y} x2={F.x} y2={F.y} strokeWidth="1.5" />
+          <line x1={D.x} y1={D.y} x2={H.x} y2={H.y} strokeWidth="1.5" />
+          <line x1={B.x} y1={B.y} x2={C.x} y2={C.y} strokeWidth="0.75" strokeOpacity="0.2" />
+          <line x1={D.x} y1={D.y} x2={C.x} y2={C.y} strokeWidth="0.75" strokeOpacity="0.2" />
+          <line x1={C.x} y1={C.y} x2={G.x} y2={G.y} strokeWidth="0.75" strokeOpacity="0.2" />
+        </g>
+
+        {/* ── Corner vertex glow dots ── */}
+        <g fill="#FF6A2A" filter="url(#iso-glow)">
+          <circle cx={E.x} cy={E.y} r="3"   opacity="0.9" />
+          <circle cx={F.x} cy={F.y} r="3"   opacity="0.9" />
+          <circle cx={H.x} cy={H.y} r="3"   opacity="0.9" />
+          <circle cx={G.x} cy={G.y} r="2.5" opacity="0.5" />
+          <circle cx={A.x} cy={A.y} r="2.5" opacity="0.85" />
+          <circle cx={B.x} cy={B.y} r="2.5" opacity="0.8" />
+          <circle cx={D.x} cy={D.y} r="2.5" opacity="0.8" />
+        </g>
+      </svg>
     </div>
   )
 }
@@ -235,25 +277,25 @@ const pillars: Pillar[] = [
     heading: 'Git push. Ship globally.',
     description:
       'Every push triggers a build. Your site goes live with SSL and custom domains in seconds — no config needed.',
-    Visual: DeployVisual,
+    Visual: GlobeVisual,
   },
   {
     heading: 'One file. One endpoint.',
     description:
       'Drop in a function file. Mercio wraps it in an isolated runtime and hands you an always-on serverless endpoint.',
-    Visual: MercioVisual,
+    Visual: FunctionVisual,
   },
   {
     heading: 'Push code. Run CI.',
     description:
       'Your existing GitHub workflows run in clean, isolated environments with live build logs on every push.',
-    Visual: ActionsVisual,
+    Visual: PipelineVisual,
   },
   {
     heading: 'Set a schedule. Forget the rest.',
     description:
       'Define a cron expression. Mercob fires your function on time, retries on failure, and keeps a full run history.',
-    Visual: MercobVisual,
+    Visual: ClockVisual,
   },
   {
     heading: 'Run AI code. Safely.',

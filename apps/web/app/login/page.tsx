@@ -7,6 +7,7 @@ import { api } from '../../lib/api'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { GlobeIllustration } from '../../components/globe-illustration'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -32,8 +33,40 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen flex">
+      {/* Left: globe illustration */}
+      <div className="hidden md:flex flex-1 max-w-[50%] flex-col items-center justify-center border-r border-border overflow-hidden relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-muted/10 via-transparent to-transparent pointer-events-none" />
+        <div className="relative z-10 flex flex-col items-center gap-7 px-8 w-full max-w-[600px]">
+          <p className="self-start text-[11px] font-mono text-muted-foreground/50 tracking-wide">
+            ~/edge-network
+          </p>
+          <GlobeIllustration />
+          <div className="flex items-center gap-5 text-[11px] font-mono text-muted-foreground">
+            <span>
+              <span className="text-primary font-medium">7</span> regions
+            </span>
+            <span className="text-border">·</span>
+            <span>
+              <span className="text-primary font-medium">40+</span> edge nodes
+            </span>
+            <span className="text-border">·</span>
+            <span>
+              <span className="text-primary font-medium">&lt;30ms</span> p50 latency
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Right: auth form */}
+      <div className="flex flex-col justify-center px-10 py-14 w-full md:max-w-[480px] shrink-0">
+        <Link
+          href="/"
+          className="mb-10 inline-block text-sm font-mono font-semibold text-foreground/70 hover:text-foreground transition-colors tracking-tight"
+        >
+          mercy
+        </Link>
+
         <div className="bg-card border border-border rounded-xl p-8 space-y-6">
           <div>
             <h1 className="text-lg font-semibold text-foreground">Welcome back</h1>
