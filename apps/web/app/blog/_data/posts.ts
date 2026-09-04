@@ -10,6 +10,16 @@ export type BlogPost = {
 
 export const posts: BlogPost[] = [
   {
+    slug: 'merci-action',
+    title: 'Inside merci-action: How Mercy Runs Your CI Workflows',
+    description:
+      'A deep technical dive into action-worker — the Bun-based CI engine that consumes the merci-actions BullMQ queue, clones your repo at a commit SHA, boots a Docker container, and runs every workflow step (run: and uses:) with logs streamed live to the dashboard.',
+    publishedAt: '2026-07-03',
+    tags: ['ci', 'docker', 'github-actions', 'bullmq', 'architecture'],
+    author: 'Mercy Engineering',
+    readingTimeMin: 20,
+  },
+  {
     slug: 'mercio-runtime',
     title: 'Inside mercio-runtime: How Mercy Executes Serverless Functions',
     description:

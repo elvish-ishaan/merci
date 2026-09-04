@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { posts, getPost } from '../_data/posts'
 import { MercioRuntimePost } from '../_posts/mercio-runtime'
+import { MerciActionPost } from '../_posts/merci-action'
 
 export function generateStaticParams() {
   return posts.map((p) => ({ slug: p.slug }))
@@ -41,6 +42,7 @@ export async function generateMetadata({
 
 const postComponents: Record<string, React.ComponentType> = {
   'mercio-runtime': MercioRuntimePost,
+  'merci-action': MerciActionPost,
 }
 
 export default async function BlogPostPage({
